@@ -1,0 +1,68 @@
+import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BookCard } from '@/components/BookCard';
+import { BOOKS } from '@/lib/data';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { getColors, spacing, typography } from '@/lib/theme/tokens';
+
+const JOSEMARIA_SLUGS = new Set(['caminho', 'sulco', 'forja']);
+
+export default function SaoJosemariaScreen() {
+  const router = useRouter();
+  const { isDark } = useTheme();
+  const colors = getColors(isDark);
+  const insets = useSafeAreaInsets();
+
+  const books = BOOKS.filter(b => JOSEMARIA_SLUGS.has(b.slug));
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.duration(350).delay(80)} style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>São Josemaria</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Caminho • Sulco • Forja</Text>
+        </Animated.View>
+
+        <View style={styles.booksSection}>
+          {books.map((book, index) => (
+            <Animated.View key={book.id} entering={FadeInDown.duration(350).delay(140 + index * 90)}>
+              <BookCard book={book} onPress={() => router.push(`/livro/${book.slug}`)} />
+            </Animated.View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+  },
+  header: {
+    marginBottom: spacing.lg,
+  },
+  title: {
+    ...typography.h2,
+    marginBottom: 4,
+  },
+  subtitle: {
+    ...typography.body,
+  },
+  booksSection: {
+    gap: spacing.md,
+  },
+});

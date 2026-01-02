@@ -1,50 +1,115 @@
-# Welcome to your Expo app 👋
+# AppCatolico
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Bem-vindo ao **AppCatolico**, uma aplicação móvel completa desenvolvida para auxiliar na vida espiritual diária. Este aplicativo oferece acesso fácil e intuitivo à Bíblia Sagrada, livros espirituais clássicos, liturgia diária e meditações, tudo em uma interface moderna e personalizável.
 
-## Get started
+## 📱 Funcionalidades
 
-1. Install dependencies
+### 📚 Biblioteca Espiritual
+- **Livros de São Josemaria Escrivá:** Acesso completo às obras "Caminho", "Sulco" e "Forja".
+- **Leitura Interativa:** Navegação por capítulos, seleção de parágrafos e compartilhamento.
 
+### 📖 Bíblia Sagrada
+- **Versão Ave Maria:** Texto completo da Bíblia Sagrada.
+- **Navegação Intuitiva:** Seleção rápida de livros e capítulos.
+- **Ferramentas de Leitura:** Destaque de versículos, cópia e compartilhamento.
+
+### 📅 Liturgia e Meditação
+- **Liturgia Diária:** Acompanhe as leituras da missa do dia.
+- **Meditação Diária:** Reflexões para auxiliar na oração pessoal.
+
+### ⭐ Favoritos e Personalização
+- **Sistema de Favoritos:** Salve seus versículos e parágrafos preferidos.
+- **Deep Linking:** Ao clicar em um favorito, o app abre diretamente no livro e capítulo correspondente, rolando automaticamente para o trecho e destacando-o.
+- **Busca Global:** Encontre rapidamente trechos na Bíblia e nos livros.
+- **Temas:** Suporte a modo Claro e Escuro (Dark Mode).
+- **Acessibilidade:** Ajuste de tamanho da fonte para melhor leitura.
+
+### 🛠️ Recursos Técnicos Avançados
+- **Menu de Ações Arrastável:** Menu flutuante interativo para ações rápidas (copiar, compartilhar, favoritar) que pode ser movido livremente pela tela.
+- **Animações Fluidas:** Uso de `react-native-reanimated` para transições suaves e feedback visual.
+- **Gestos:** Integração com `react-native-gesture-handler` para interações naturais.
+
+## 🚀 Tecnologias Utilizadas
+
+Este projeto foi construído com as tecnologias mais modernas do ecossistema React Native:
+
+- **Framework:** [Expo](https://expo.dev) (SDK 52)
+- **Linguagem:** [TypeScript](https://www.typescriptlang.org/)
+- **Roteamento:** [Expo Router](https://docs.expo.dev/router/introduction) (File-based routing)
+- **UI/UX:**
+  - `react-native-reanimated` (Animações)
+  - `react-native-gesture-handler` (Gestos)
+  - `react-native-safe-area-context`
+  - `@expo/vector-icons`
+- **Armazenamento Local:** `AsyncStorage` (para persistência de favoritos e configurações)
+
+## 📂 Estrutura do Projeto
+
+```
+AppCatolico/
+├── app/                    # Rotas e Telas (Expo Router)
+│   ├── (tabs)/             # Navegação principal (Abas: Livros, Bíblia, Liturgia, Config)
+│   ├── biblia/             # Rotas dinâmicas da Bíblia
+│   ├── livro/              # Rotas dinâmicas dos Livros
+│   ├── _layout.tsx         # Layout raiz e providers
+│   └── ...
+├── components/             # Componentes Reutilizáveis
+│   ├── ui/                 # Componentes de interface básicos
+│   ├── BookCard.tsx        # Card de exibição de livros
+│   ├── ChapterCard.tsx     # Card de seleção de capítulos
+│   └── ...
+├── constants/              # Constantes globais (Cores, Temas)
+├── data/                   # Dados estáticos (JSONs da Bíblia e Livros)
+├── hooks/                  # Custom Hooks (useTheme, useFavoritesSync, etc.)
+├── lib/                    # Lógica de negócios e utilitários
+│   ├── theme/              # Contexto e tokens de tema
+│   ├── sync/               # Serviços de sincronização
+│   └── ...
+└── assets/                 # Imagens e ícones
+```
+
+## 🏁 Como Rodar o Projeto
+
+1. **Instale as dependências:**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Inicie o servidor de desenvolvimento:**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Execute no dispositivo:**
+   - Use o aplicativo **Expo Go** no seu celular (Android ou iOS) para escanear o QR Code.
+   - Ou pressione `a` para abrir no emulador Android, ou `i` para o simulador iOS.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🔮 Próximas Implementações (Roadmap)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Para continuar evoluindo o AppCatolico, sugerimos as seguintes funcionalidades:
 
-## Get a fresh project
+1.  **Áudio e Text-to-Speech:**
+    -   Implementar leitura em voz alta dos capítulos e meditações para acessibilidade e uso em trânsito.
 
-When you're ready, run:
+2.  **Notas Pessoais:**
+    -   Permitir que o usuário adicione anotações pessoais em versículos ou parágrafos específicos.
 
-```bash
-npm run reset-project
-```
+3.  **Notificações Push:**
+    -   Lembretes diários para a Liturgia e Meditação.
+    -   Versículo do dia.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+4.  **Sincronização em Nuvem:**
+    -   Criar sistema de contas de usuário para salvar favoritos e notas na nuvem, permitindo acesso em múltiplos dispositivos.
 
-## Learn more
+5.  **Planos de Leitura:**
+    -   Criar planos de leitura bíblica (ex: Bíblia em um ano).
 
-To learn more about developing your project with Expo, look at the following resources:
+6.  **Expansão da Biblioteca:**
+    -   Adicionar mais clássicos da espiritualidade e documentos da Igreja.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+7.  **Melhorias na Busca:**
+    -   Implementar filtros avançados e histórico de busca.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Desenvolvido com ❤️ para a evangelização digital.

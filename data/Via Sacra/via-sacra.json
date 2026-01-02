@@ -1,0 +1,231 @@
+{
+  "oracao_inicial": "Senhor Jesus Cristo, vós com tanto amor entrastes nesta via para morrerdes por mim; eu porém tantas vezes vos desprezei! Agora, de toda a minha alma vos amo e, porque vos amo, arrependo-me do fundo do coração de ter-vos ofendido. Perdoai-me e permiti que vos acompanhe nesta via. Vós, por amor a mim, caminhais para o lugar em que por mim haveis de morrer, e eu também, por amor a vós, desejo acompanhar-vos para convosco morrer, amantíssimo Redentor. Ó meu Jesus, desejo convosco viver e morrer!",
+  "stations": [
+    {
+      "index": 1,
+      "estacao": "1° Estação",
+      "title": "Jesus é condenado à morte",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como Jesus Cristo, já flagelado e coroado de espinhos, foi por fim injustamente condenado à morte por Pilatos.",
+      "oracao": "Ó Jesus adorável, não foi Pilatos, mas minha vida iníqua que vos condenou à morte. Pelo mérito deste tão penoso itinerário, no qual entrais rumo ao monte Calvário, peço-vos que benignamente me acompanheis no caminho pelo qual minha alma se dirige à eternidade. Amo-vos, ó Jesus, meu Amor, mais do que a mim mesmo, e do fundo do coração me arrependo de ter-vos ofendido. Não permitais que eu novamente me separe de vós. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes. O que vos for agradável também o será para mim.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "A morrer crucificado,\nTeu Jesus é condenado\nPor teus crimes, pecador.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 2,
+      "estacao": "2° Estação",
+      "title": "Jesus carrega a Cruz",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como Jesus Cristo, levando a Cruz aos ombros, lembrava-se no caminho de oferecer por nós ao Pai eterno a morte que havia de sofrer.",
+      "oracao": "Ó amabilíssimo Jesus, abraço todas as adversidades que, por vossa vontade, hei de tolerar até a morte e, pelo duro sofrimento que suportastes carregando a Cruz, peço-vos que me deis forças para que também eu possa carregar, com ânimo forte e paciente, minha própria cruz. Amo-vos, ó Jesus, meu Amor, e arrependo-me de ter-vos ofendido. Não permitais que novamente me separe de ti. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Com a Cruz é carregado,\nE do peso acabrunhado,\nVai morrer por teu amor.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 3,
+      "estacao": "3° Estação",
+      "title": "Jesus cai pela primeira vez",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos a primeira queda de Jesus sob o peso da Cruz. Tinha Ele a carne, por causa da cruenta flagelação, ferida de muitos modos e a cabeça coroada de espinhos; derramara ainda tanto sangue, que mal podia mover os pés por falta de forças. E porque era oprimido pelo grave peso da Cruz e açulado sem clemência pelos soldados, por isso aconteceu-lhe de cair muitas vezes por terra ao longo do caminho.",
+      "oracao": "Ó meu Jesus, não é o peso da Cruz, mas o dos meus pecados que de tantas dores vos cobre. Rogo-vos, por esta vossa primeira queda, que me protejais de toda queda em pecado. Amo-vos, ó Jesus, de todo o meu coração; arrependo-me de ter-vos ofendido. Não me permitais novamente cair em pecado. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Pela Cruz tão oprimido,\nCai Jesus, desfalecido,\nPela tua salvação.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 4,
+      "estacao": "4° Estação",
+      "title": "Jesus se encontra com sua Mãe dolorosa",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como deve ter sido o encontro, neste caminho, do Filho e da Mãe. Jesus e Maria se olharam entre si, e os olhares mudos que trocaram foram outras tantas setas a atravessar o coração amante de ambos.",
+      "oracao": "Ó amantíssimo Jesus, pela dor acerba que experimentastes neste encontro, tornai-me, eu vos peço, verdadeiramente devoto de vossa Mãe santíssima. E vós, ó minha dolorosa Rainha, intercedei por mim e alcançai-me uma tal memória dos suplícios de vosso Filho, que minha mente esteja para sempre detida na piedosa contemplação deles. Amo-vos, ó Jesus, meu Amor; arrependo-me de ter-vos ofendido. Não me permitais novamente pecar contra vós. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "De Maria lacrimosa,\nNo encontro lastimosa,\nVê a imensa compaixão.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 5,
+      "estacao": "5° Estação",
+      "title": "O Cirineu ajuda Jesus a carregar a Cruz",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como os judeus obrigaram Simão de Cirene a carregar a Cruz atrás do Senhor, vendo Jesus quase expirar a cada passo devido ao cansaço e temendo, por outra parte, que morresse no caminho aquele que queriam ver pregado à Cruz.",
+      "oracao": "Ó dulcíssimo Jesus, não quero, como o Cirineu, repudiar a Cruz. De bom grado a abraço e tomo sobre mim; abraço especialmente a morte que para mim estabelecestes, com todas as dores que ela trará consigo. Uno minha morte à vossa e, assim unida, ofereço-a a vós em sacrifício. Vós morrestes por amor a mim; quero também eu morrer por amor a vós, com a intenção de vos agradar. Vós, porém, ajudai-me com a vossa graça. Amo-vos, ó Jesus, meu Amor, e arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Em extremo desmaiado,\nTeve auxílio, tão cansado,\nRecebendo o Cireneu.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 6,
+      "estacao": "6° Estação",
+      "title": "Verônica limpa com um sudário o rosto de Jesus",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como aquela santa mulher Verônica, vendo Jesus abatido pelas dores, com o rosto banhado em suor e sangue, estendeu-lhe um pano em que, purificada a face, Ele deixou impressa sua imagem.",
+      "oracao": "Ó meu Jesus, formosa era antes a vossa face; mas agora não aparece assim, tão deformada está por feridas e sangue! Ai de mim, como era formosa também minha alma, quando recebi a vossa graça pelo Batismo: mas, pecando, tornei-a disforme. Vós somente, meu Redentor, lhe podeis restituir a antiga beleza. Para que o façais, rogo-vos pelo mérito de vossa Paixão. Amo-vos, ó Jesus, meu Amor; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "O seu rosto ensanguentado,\nPor Verônica enxugado,\nEis, no pano, apareceu.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 7,
+      "estacao": "7° Estação",
+      "title": "Jesus cai pela segunda vez",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos a segunda queda de Jesus sob o peso da Cruz, na qual se lhe aprofundam todas as chagas da venerável cabeça e de todo o corpo, e se renovam todas as angústias do doloroso Senhor.",
+      "oracao": "Ó mansíssimo Jesus, quantas vezes me concedestes o perdão! Eu, porém, recaí nos mesmos pecados e renovei minhas ofensas contra vós. Pelo mérito desta vossa nova queda, ajudai-me a perseverar em vossa graça até a morte. Fazei, em todas as tentações que avançarão contra mim, que em vós sempre me refugie. Amo-vos de todo o meu coração, ó Jesus, meu Amor; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Outra vez desfalecido,\nPelas dores abatido,\nCai por terra o Salvador.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 8,
+      "estacao": "8° Estação",
+      "title": "Jesus fala às mulheres de Jerusalém",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como estas mulheres, vendo Jesus morto de cansaço e coberto de sangue, são tocadas de comiseração e choram copiosamente. Mas, voltando-se a elas, Ele diz: “Não choreis por mim; antes, chorai por vós mesmas e por vossos filhos”.",
+      "oracao": "Ó doloroso Jesus, choro os pecados que cometi contra vós, não só pelas penas de que me fizeram digno, mas sobretudo pela tristeza que vos causaram a vós, que tanto me amastes. Ao choro me move menos o inferno que o amor a vós. Ó meu Jesus, amo-vos mais do que a mim mesmo; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Das mulheres piedosas,\nDe Sião filhas chorosas,\nÉ Jesus consolador.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 9,
+      "estacao": "9° Estação",
+      "title": "Jesus cai pela terceira vez",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos a terceira queda de Cristo sob o peso da Cruz. Caiu porque era demasiada a sua fraqueza e excessiva a crueldade dos algozes, que lhe queriam acelerar a marcha, embora Ele mal pudesse dar um passo.",
+      "oracao": "Ó Jesus tão maltratado, pelo mérito desta falta de forças que quisestes padecer no caminho do Calvário, confortai-me, eu vos peço, com tanto vigor, que já não tenha respeito algum às opiniões dos homens e domine minha natureza viciosa: porque ambas as coisas foram a causa por que desprezei outrora a vossa amizade. Amo-vos, ó Jesus, meu Amor, de todo o meu coração; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Cai, terceira vez, prostrado,\nPelo peso redobrado\nDos pecados e da Cruz.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 10,
+      "estacao": "10° Estação",
+      "title": "Jesus é espoliado de suas vestes",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos com que violência arrancaram as vestes a Cristo. Como o traje interior estivesse muito pegado à carne, aberta pelos flagelos, os carnífices, ao puxarem-lha, rasgaram-lhe também a pele. Tenhamos compaixão de Nosso Senhor e lhe falemos assim:",
+      "oracao": "Ó inocentíssimo Jesus, pelo mérito da dor que padecestes nesta espoliação, ajudai-me, eu vos peço, a despir-me de todo afeto às coisas criadas e, com toda a inclinação de minha vontade, converter-me somente a vós, que sois tão digno do meu amor. Amo-vos de todo o meu coração; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Dos vestidos despojado,\nPor algozes maltratado,\nEu vos vejo, meu Jesus.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 11,
+      "estacao": "11° Estação",
+      "title": "Jesus é pregado à Cruz",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como Jesus é arremessado sobre a Cruz e, de braços estendidos, oferece sua vida ao Pai eterno em sacrifício pela nossa salvação. Os carnífices o pregam à Cruz e, depois de erguerem esta, deixam-no levantado num infame patíbulo, abandonado a uma morte cruel.",
+      "oracao": "Ó Jesus tão desprezado, pregai meu coração aos vossos pés, para que, com vínculo de amor, eu permaneça sempre a vós ligado e jamais seja de vós separado. Amo-vos mais do que a mim mesmo, arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Sois por mim na Cruz pregado,\nInsultado, blasfemado,\nCom cegueira e com furor.\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 12,
+      "estacao": "12° Estação",
+      "title": "Jesus morre na Cruz",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos Jesus preso à nossa Cruz. Após três horas de luta, consumido enfim pelas dores, Ele deu o corpo à morte e, de cabeça inclinada, entregou o espírito.",
+      "oracao": "Ó Jesus morto, movido por íntimos afetos de piedade, beijo esta Cruz em que vós, por minha causa, cumpristes o curso de vossa vida. Pelos pecados cometidos, mereci uma morte infeliz; mas vossa morte é minha esperança. Pelos méritos de vossa morte, concedei-me, peço-vos, que, abraçado aos vossos pés e abrasado de amor por vós, eu entregue um dia meu espírito. Amo-vos de todo o meu coração; arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Por meus crimes padecestes,\nMeu Jesus, por mim morrestes,\nOh, quão grande é minha dor!\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 13,
+      "estacao": "13° Estação",
+      "title": "Jesus é descido da Cruz",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como dois dos discípulos de Jesus, José e Nicodemos, o tiram exânime da Cruz e o colocam nos braços de sua Mãe dolorosa, que recebe o Filho morto com grande amor e o abraça ternamente.",
+      "oracao": "Ó Mãe das Dores, pelo amor com que amais o vosso Filho, recebei-me como servo vosso e rogai a Ele por mim. E vós, ó meu Redentor, porque por mim morrestes, fazei, benignamente, com que eu vos ame; a vós somente desejo nem quero nada fora de vós. Amo-vos, ó Jesus, meu Amor, e arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "Do madeiro vos tiraram\nE à Mãe vos entregaram\nCom que dor e compaixão!\nPela Virgem dolorosa,\nVossa Mãe tão piedosa,\nPerdoai-me, meu Jesus."
+    },
+    {
+      "index": 14,
+      "estacao": "14° Estação",
+      "title": "Jesus é sepultado",
+      "versiculo": "Nós vos adoramos, ó Cristo, e vos bendizemos.",
+      "resposta": "Porque, por vossa santa Cruz, redimistes o mundo.",
+      "contemplacao": "Contemplemos como os discípulos levam Jesus exânime ao lugar da sepultura. Triste, a Mãe os acompanha e com as próprias mãos acomoda o corpo do Filho à sepultura. Fecha-se este, enfim, e todos vão-se embora.",
+      "oracao": "Ó Jesus sepultado, beijo esta pedra que vos acolheu; mas, após três dias, haveis de ressurgir! Por vossa ressurreição, fazei-me, eu vos peço, ressurgir glorioso convosco no último dia e ir para o Céu, onde, unido a vós para sempre, vos hei de louvar e amar por toda a eternidade. Amo-vos e arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
+      "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
+      "cantico": "No sepulcro vos deixaram,\nSepultado, vos choraram,\nMagoado o coração.\nMeu Jesus, por vossos passos,\nRecebei em vossos braços\nA mim, pobre pecador.\nOração final a Jesus crucificado. — Eis-me aqui, ó meu bom e\ndulcíssimo Jesus! Humildemente prostrado de joelhos em vossa presença,\npeço e suplico-vos, com todo o fervor de minha alma, que vos digneis\ngravar em meu coração os mais vivos sentimentos de fé, esperança e\ncaridade, de verdadeiro arrependimento de meus pecados, e um firme\npropósito de emendar-me, enquanto vou considerando, com vivo afeto e\ndor, as vossas cinco chagas, tendo presentes as palavras que já o profeta\nDavi punha em vossa boca, ó bom Jesus: “Transpassaram minhas mãos e\nos meus pés e contaram todos os meus ossos” ( Sl 21, 17).\nA Nossa Senhora das Dores. — Ó Mãe das Dores, Rainha dos mártires,\nque tanto chorastes vosso Filho, morto para me salvar, alcançai-me uma\nverdadeira contrição dos meus pecados e uma sincera mudança de vida.\nMãe, pela dor que experimentastes quando vosso divino Filho, no meio de\ntantos tormentos, inclinando a cabeça expirou à vossa vista sobre a cruz,\neu vos suplico que me alcanceis uma boa morte. Por piedade, ó advogada\ndos pecadores, não deixeis de amparar a minha alma na aflição e no\ncombate da terrível passagem desta vida à eternidade. E, como é possível\nque, neste momento, a palavra e a voz me faltem para pronunciar o vosso\nnome e o de Jesus, rogo-vos, desde já, a vós e a vosso divino Filho, que\nme socorrais nessa hora extrema, e assim direi: Jesus e Maria,\nentrego-vos a minha alma. Amém."
+    }
+  ],
+  "images": [
+    {
+      "file": "estacao-01.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-02.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-03.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-04.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-05.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-06.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-07.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-08.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-09.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-10.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-11.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-12.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-13.png",
+      "width": 1158,
+      "height": 651
+    },
+    {
+      "file": "estacao-14.png",
+      "width": 1158,
+      "height": 651
+    }
+  ]
+}

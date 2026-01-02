@@ -1,98 +1,272 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { BookCard } from '@/components/BookCard';
+import { BOOKS } from '@/lib/data';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const { isDark } = useTheme();
+  const colors = getColors(isDark);
+  const insets = useSafeAreaInsets();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const catecismo = BOOKS.find(b => b.slug === 'catecismo');
+  const viaSacra = BOOKS.find(b => b.slug === 'via-sacra');
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: spacing.sm + insets.bottom }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header minimalista */}
+        <Animated.View 
+          entering={FadeInDown.duration(400).delay(100)}
+          style={styles.header}
+        >
+          <View>
+            <Text style={[styles.title, { color: colors.text }]}>Biblioteca</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>São Josemaria Escrivá</Text>
+          </View>
+          <Pressable 
+            style={[styles.iconButton, { 
+              backgroundColor: colors.surface,
+              borderColor: colors.border 
+            }]}
+            onPress={() => router.push('/favoritos')}
+          >
+            <Ionicons name="heart-outline" size={20} color={colors.text} />
+          </Pressable>
+        </Animated.View>
+
+        {/* Card de Meditação Rápida */}
+        <Animated.View entering={FadeInDown.duration(400).delay(150)}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.meditationCard,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.9 : 1,
+              },
+            ]}
+            onPress={() => router.push('/meditacao')}
+          >
+            <View style={styles.meditationContent}>
+              <View style={styles.meditationIcon}>
+                <Text style={styles.meditationEmoji}>🙏</Text>
+              </View>
+              <View style={styles.meditationText}>
+                <Text style={styles.meditationTitle}>Meditação Rápida</Text>
+                <Text style={styles.meditationSubtitle}>
+                  Um parágrafo inspirador para sua reflexão diária
+                </Text>
+              </View>
+              <View style={styles.meditationArrow}>
+                <Ionicons name="arrow-forward" size={24} color="#fff" />
+              </View>
+            </View>
+          </Pressable>
+        </Animated.View>
+
+        {/* Lista de livros */}
+        <View style={styles.booksSection}>
+          <Animated.View entering={FadeInDown.duration(400).delay(200)}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.collectionCard,
+                shadows.sm,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              onPress={() => router.push('/livro/sao-josemaria')}
+            >
+              <View style={[styles.collectionIconContainer, { backgroundColor: colors.surfaceLight }]}>
+                <Text style={styles.collectionIcon}>📚</Text>
+              </View>
+              <View style={styles.collectionContent}
+              >
+                <Text style={[styles.collectionTitle, { color: colors.text }]}>Livros de São Josemaria</Text>
+                <Text style={[styles.collectionAuthor, { color: colors.textSecondary }]}>Caminho • Sulco • Forja</Text>
+                <Text style={[styles.collectionDescription, { color: colors.textMuted }]} numberOfLines={2}>
+                  Trilogia clássica de pontos de meditação e vida cristã.
+                </Text>
+                <View style={[styles.collectionFooter, { borderTopColor: colors.divider }]}
+                >
+                  <Text style={[styles.collectionFooterText, { color: colors.textSecondary }]}>3 livros</Text>
+                </View>
+              </View>
+            </Pressable>
+          </Animated.View>
+
+          {catecismo ? (
+            <Animated.View entering={FadeInDown.duration(400).delay(300)}>
+              <BookCard book={catecismo} onPress={() => router.push(`/livro/${catecismo.slug}`)} />
+            </Animated.View>
+          ) : null}
+
+          {viaSacra ? (
+            <Animated.View entering={FadeInDown.duration(400).delay(350)}>
+              <BookCard book={viaSacra} onPress={() => router.push(`/livro/${viaSacra.slug}`)} />
+            </Animated.View>
+          ) : null}
+        </View>
+
+        {/* Footer minimalista */}
+        <Animated.View 
+          entering={FadeInDown.duration(400).delay(600)}
+          style={[styles.footer, { borderTopColor: colors.divider }]}
+        >
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+            Desenvolvido com ❤️ para a glória de Deus
+          </Text>
+        </Animated.View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    marginTop: spacing.sm,
+  },
+  title: {
+    ...typography.h1,
+    marginBottom: 4,
+  },
+  subtitle: {
+    ...typography.body,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  meditationCard: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  meditationContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.md,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  meditationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.round,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  meditationEmoji: {
+    fontSize: 24,
+  },
+  meditationText: {
+    flex: 1,
+  },
+  meditationTitle: {
+    ...typography.h3,
+    color: '#fff',
+    marginBottom: 4,
+  },
+  meditationSubtitle: {
+    ...typography.small,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 18,
+  },
+  meditationArrow: {
+    opacity: 0.8,
+  },
+  booksSection: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  collectionCard: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  collectionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  collectionIcon: {
+    fontSize: 32,
+  },
+  collectionContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  collectionTitle: {
+    ...typography.h3,
+  },
+  collectionAuthor: {
+    ...typography.caption,
+  },
+  collectionDescription: {
+    ...typography.body,
+    marginTop: spacing.xs,
+  },
+  collectionFooter: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  collectionFooterText: {
+    ...typography.small,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  footer: {
+    paddingTop: spacing.xl,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
+  footerText: {
+    ...typography.small,
+    opacity: 0.6,
   },
 });
