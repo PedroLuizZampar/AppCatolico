@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { borderRadius, spacing, typography } from '@/lib/theme/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography, spacing, borderRadius } from '@/lib/theme/tokens';
+import React from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
 interface MeditationShareCardProps {
   text: string;
@@ -13,6 +13,7 @@ interface MeditationShareCardProps {
   bookAuthor: string;
   bookColor: string;
   date: string;
+  hideChapterNumber?: boolean;
 }
 
 export const MeditationShareCard = React.forwardRef<View, MeditationShareCardProps>(
@@ -27,6 +28,7 @@ export const MeditationShareCard = React.forwardRef<View, MeditationShareCardPro
       bookAuthor,
       bookColor,
       date,
+      hideChapterNumber,
     },
     ref
   ) => {
@@ -53,7 +55,7 @@ export const MeditationShareCard = React.forwardRef<View, MeditationShareCardPro
           {/* Referência */}
           <View style={styles.referenceContainer}>
             <Text style={[styles.chapterText, { color: bookColor }]}>
-              Capítulo {chapterNumber} · {chapterName}
+              {hideChapterNumber ? chapterName : `Capítulo ${chapterNumber} · ${chapterName}`}
             </Text>
             <View style={[styles.paragraphBadge, { backgroundColor: bookColor }]}>
               <Text style={styles.paragraphNumber}>#{number}</Text>

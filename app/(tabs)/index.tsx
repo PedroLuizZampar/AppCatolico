@@ -16,7 +16,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const catecismo = BOOKS.find(b => b.slug === 'catecismo');
+  const frasesDeSantos = BOOKS.find(b => b.slug === 'frases-de-santos');
   const viaSacra = BOOKS.find(b => b.slug === 'via-sacra');
+  const misteriosTerco = BOOKS.find(b => b.slug === 'misterios-terco');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -116,9 +118,21 @@ export default function HomeScreen() {
             </Animated.View>
           ) : null}
 
+          {frasesDeSantos ? (
+            <Animated.View entering={FadeInDown.duration(400).delay(325)}>
+              <BookCard book={frasesDeSantos} onPress={() => router.push(`/livro/${frasesDeSantos.slug}`)} />
+            </Animated.View>
+          ) : null}
+
           {viaSacra ? (
             <Animated.View entering={FadeInDown.duration(400).delay(350)}>
               <BookCard book={viaSacra} onPress={() => router.push(`/livro/${viaSacra.slug}`)} />
+            </Animated.View>
+          ) : null}
+
+          {misteriosTerco ? (
+            <Animated.View entering={FadeInDown.duration(400).delay(375)}>
+              <BookCard book={misteriosTerco} onPress={() => router.push(`/livro/${misteriosTerco.slug}`)} />
             </Animated.View>
           ) : null}
         </View>

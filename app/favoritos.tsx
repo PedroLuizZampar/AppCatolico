@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FavoriteParagraph } from '@/lib/types';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius, shadows } from '@/lib/theme/tokens';
-import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
 import { getCatecismoChapterIdForParagraph } from '@/lib/catecismo';
+import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { FavoriteParagraph } from '@/lib/types';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type FilterType = 'todos' | 'biblia' | 'livro' | 'catecismo';
+type FilterType = 'todos' | 'biblia' | 'livro' | 'catecismo' | 'frases';
 type SortType = 'recente' | 'antigo' | 'livro' | 'capitulo';
 
 // Tipo estendido para grupos
@@ -78,6 +78,8 @@ export default function FavoritesScreen() {
       filtered = filtered.filter(f => f.type === 'livro' && f.bookSlug !== 'catecismo');
     } else if (filterType === 'catecismo') {
       filtered = filtered.filter(f => f.bookSlug === 'catecismo');
+    } else if (filterType === 'frases') {
+      filtered = filtered.filter(f => f.type === 'frases');
     }
 
     // Aplicar ordenação
@@ -281,6 +283,20 @@ export default function FavoritesScreen() {
               styles.filterText,
               { color: filterType === 'catecismo' ? '#fff' : colors.text }
             ]}>Catecismo</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.filterChip,
+              filterType === 'frases' && { backgroundColor: colors.primary },
+              { borderColor: colors.border }
+            ]}
+            onPress={() => setFilterType('frases')}
+          >
+            <Text style={[
+              styles.filterText,
+              { color: filterType === 'frases' ? '#fff' : colors.text }
+            ]}>Frases</Text>
           </Pressable>
         </ScrollView>
       </View>

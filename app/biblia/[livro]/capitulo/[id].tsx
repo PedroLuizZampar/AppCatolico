@@ -431,15 +431,15 @@ export default function CapituloBibliaScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyVersiculos}>
-                <Ionicons name="copy-outline" size={22} color={colors.primary} />
+                <Ionicons name="copy-outline" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteVersiculos}>
-                <Ionicons name="heart" size={22} color={colors.error} />
+                <Ionicons name="heart" size={18} color={colors.error} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareVersiculos}>
-                <Ionicons name="share-outline" size={22} color={colors.primary} />
+                <Ionicons name="share-outline" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>

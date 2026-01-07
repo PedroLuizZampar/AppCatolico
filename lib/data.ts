@@ -6,6 +6,8 @@ import CaminhoData from '../data/Caminho.json';
 import ForjaData from '../data/Forja.json';
 import SulcoData from '../data/Sulco.json';
 import { catecismoAgrupadoBook } from './catecismo';
+import { frasesDeSantosBook } from './frasesDeSantos';
+import { misteriosTercoBook } from './misteriosTerco';
 import { viaSacraBook } from './viaSacra';
 
 // Configuração dos livros com metadados visuais
@@ -55,6 +57,17 @@ export const BOOKS: BookData[] = [
     data: catecismoAgrupadoBook,
   },
   {
+    id: '6',
+    slug: 'frases-de-santos',
+    title: 'Frases de Santos',
+    author: 'Santos e Beatos',
+    description: 'Seleção de frases espirituais de santos e beatos para meditação e inspiração diária.',
+    color: '#4A90E2',
+    gradient: ['#4A90E2', '#357ABD'],
+    icon: '💬',
+    data: frasesDeSantosBook,
+  },
+  {
     id: '5',
     slug: 'via-sacra',
     title: 'Via Sacra',
@@ -64,6 +77,17 @@ export const BOOKS: BookData[] = [
     gradient: ['#4A90E2', '#357ABD'],
     icon: '🛐',
     data: viaSacraBook,
+  },
+  {
+    id: '7',
+    slug: 'misterios-terco',
+    title: 'Mistérios do Terço',
+    author: 'Tradição Católica',
+    description: 'Os 20 mistérios do Santo Rosário para meditação: Gozosos, Luminosos, Dolorosos e Gloriosos.',
+    color: '#9B59B6',
+    gradient: ['#9B59B6', '#8E44AD'],
+    icon: '📿',
+    data: misteriosTercoBook,
   },
 ];
 

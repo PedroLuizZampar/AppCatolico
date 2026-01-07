@@ -1,14 +1,14 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import Animated, { FadeInDown, FadeIn, Easing } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 import { ChapterCard } from '@/components/ChapterCard';
 import { SearchBar } from '@/components/SearchBar';
-import { getBookBySlug } from '@/lib/data';
 import { findCatecismoParagraphByNumber } from '@/lib/catecismo';
+import { getBookBySlug } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius } from '@/lib/theme/tokens';
+import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated';
 
 export default function BookScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -18,10 +18,25 @@ export default function BookScreen() {
   const book = getBookBySlug(slug);
 
   const isCatecismo = slug === 'catecismo';
-  const [catecismoQuery, setCatecismoQuery] = useState('');
+  const isFrasesDeSantos = slug === 'frases-de-santos';
+  const isViaSacra = slug === 'via-sacra';
+  const isMisteriosTerco = slug === 'misterios-terco';
+  const isJosemariaBook = slug === 'caminho' || slug === 'sulco' || slug === 'forja';
 
-  const trimmedCatecismoQuery = catecismoQuery.trim();
-  const isNumericCatecismoQuery = isCatecismo && /^\d+$/.test(trimmedCatecismoQuery);
+  const [query, setQuery] = useState('');
+
+  const trimmedQuery = query.trim();
+  const isNumericQuery = /^\d+$/.test(trimmedQuery);
+  const isNumericCatecismoQuery = isCatecismo && isNumericQuery;
+  const isNumericJosemariaQuery = isJosemariaBook && isNumericQuery;
+
+  const normalizeText = (value: string): string => {
+    return (value ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  };
 
   const totalParagraphs = useMemo(() => {
     if (!book) return 0;
@@ -36,14 +51,57 @@ export default function BookScreen() {
     );
   }
 
-  const chaptersToShow = (() => {
-    if (!isCatecismo) return book.data.chapters;
-    if (!trimmedCatecismoQuery) return book.data.chapters;
-    if (isNumericCatecismoQuery) return book.data.chapters;
+  const findChapterIdForParagraphInBook = (paragraphNumber: number): number | null => {
+    for (const ch of book.data.chapters) {
+      if (ch.paragraphs.some(p => p.number === paragraphNumber)) return ch.chapter;
+    }
+    return null;
+  };
 
-    const q = trimmedCatecismoQuery.toLowerCase();
-    return book.data.chapters.filter(ch => ch.name.toLowerCase().includes(q));
+  const findParagraphTextInBook = (paragraphNumber: number): string | null => {
+    for (const ch of book.data.chapters) {
+      const found = ch.paragraphs.find(p => p.number === paragraphNumber);
+      if (found) return found.text;
+    }
+    return null;
+  };
+
+  const chaptersToShow = (() => {
+    if (!trimmedQuery) return book.data.chapters;
+
+    // Catecismo: texto filtra temas (nome do capítulo)
+    if (isCatecismo) {
+      if (isNumericCatecismoQuery) return book.data.chapters;
+      const q = normalizeText(trimmedQuery);
+      return book.data.chapters.filter(ch => normalizeText(ch.name).includes(q));
+    }
+
+    // Frases de Santos: texto filtra apenas pelo nome do santo
+    if (isFrasesDeSantos) {
+      const q = normalizeText(trimmedQuery);
+      return book.data.chapters.filter(ch => normalizeText(ch.name).includes(q));
+    }
+
+    // Livros do São Josemaria: número vai direto ao ponto; texto filtra pelos temas (nome do capítulo), como no Catecismo
+    if (isJosemariaBook) {
+      if (isNumericJosemariaQuery) return book.data.chapters;
+      const q = normalizeText(trimmedQuery);
+      return book.data.chapters.filter(ch => normalizeText(ch.name).includes(q));
+    }
+
+    return book.data.chapters;
   })();
+
+  const statsLabelChapters = isViaSacra 
+    ? 'estações' 
+    : isCatecismo 
+      ? 'temas' 
+      : isFrasesDeSantos 
+        ? 'santos'
+        : isMisteriosTerco
+          ? 'grupos'
+          : 'capítulos';
+  const statsLabelParagraphs = isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -76,66 +134,106 @@ export default function BookScreen() {
             <View style={styles.statItem}>
               <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
               <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                {book.data.chapters.length} capítulos
+                {book.data.chapters.length} {statsLabelChapters}
               </Text>
             </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-            <View style={styles.statItem}>
-              <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                {totalParagraphs} parágrafos
-              </Text>
-            </View>
+            {!isViaSacra && !isMisteriosTerco ? (
+              <>
+                <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
+                <View style={styles.statItem}>
+                  <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                    {totalParagraphs} {statsLabelParagraphs}
+                  </Text>
+                </View>
+              </>
+            ) : null}
           </View>
         </Animated.View>
 
-        {isCatecismo ? (
+        {isCatecismo || isFrasesDeSantos || isJosemariaBook ? (
           <View style={styles.catecismoSearchContainer}>
             <View style={styles.searchRow}>
               <View style={{ flex: 1 }}>
                 <SearchBar
-                  value={catecismoQuery}
-                  onChangeText={setCatecismoQuery}
-                  placeholder="Busque por tema ou parágrafo..."
-                  keyboardType={isNumericCatecismoQuery ? 'number-pad' : 'default'}
-                  inputMode={isNumericCatecismoQuery ? 'numeric' : 'text'}
-                  returnKeyType={isNumericCatecismoQuery ? 'search' : 'done'}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder={
+                    isCatecismo
+                      ? 'Busque por tema ou parágrafo...'
+                      : isFrasesDeSantos
+                        ? 'Buscar santo...'
+                        : 'Busque por palavra ou número...'
+                  }
+                  keyboardType={isNumericQuery ? 'number-pad' : 'default'}
+                  inputMode={isNumericQuery ? 'numeric' : 'text'}
+                  returnKeyType={(isCatecismo && isNumericCatecismoQuery) || (isJosemariaBook && isNumericJosemariaQuery) ? 'search' : 'done'}
                   onSubmitEditing={() => {
-                    if (!isNumericCatecismoQuery) return;
+                    if (isCatecismo) {
+                      if (!isNumericCatecismoQuery) return;
 
-                    const n = parseInt(trimmedCatecismoQuery, 10);
-                    if (!Number.isFinite(n) || n <= 0) {
-                      Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
+                      const n = parseInt(trimmedQuery, 10);
+                      if (!Number.isFinite(n) || n <= 0) {
+                        Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
+                        return;
+                      }
+
+                      const { text, chapterId } = findCatecismoParagraphByNumber(n);
+                      if (!text) {
+                        Alert.alert('Não encontrado', `O parágrafo ${n} não foi encontrado no Catecismo completo.`);
+                        return;
+                      }
+
+                      if (!chapterId) {
+                        Alert.alert(
+                          'Encontrado, mas sem grupo',
+                          `O parágrafo ${n} existe, mas não foi localizado em nenhum grupo do Catecismo Agrupado.`
+                        );
+                        return;
+                      }
+
+                      router.push({
+                        pathname: '/livro/[slug]/capitulo/[id]',
+                        params: { slug: 'catecismo', id: chapterId.toString(), paragraph: n.toString() },
+                      });
                       return;
                     }
 
-                    const { text, chapterId } = findCatecismoParagraphByNumber(n);
-                    if (!text) {
-                      Alert.alert('Não encontrado', `O parágrafo ${n} não foi encontrado no Catecismo completo.`);
-                      return;
-                    }
+                    if (isJosemariaBook) {
+                      if (!isNumericJosemariaQuery) return;
 
-                    if (!chapterId) {
-                      Alert.alert(
-                        'Encontrado, mas sem grupo',
-                        `O parágrafo ${n} existe, mas não foi localizado em nenhum grupo do Catecismo Agrupado.`
-                      );
-                      return;
-                    }
+                      const n = parseInt(trimmedQuery, 10);
+                      if (!Number.isFinite(n) || n <= 0) {
+                        Alert.alert('Número inválido', 'Digite um número de ponto válido.');
+                        return;
+                      }
 
-                    router.push({
-                      pathname: '/livro/[slug]/capitulo/[id]',
-                      params: { slug: 'catecismo', id: chapterId.toString(), paragraph: n.toString() },
-                    });
+                      const text = findParagraphTextInBook(n);
+                      if (!text) {
+                        Alert.alert('Não encontrado', `O ponto ${n} não foi encontrado neste livro.`);
+                        return;
+                      }
+
+                      const chapterId = findChapterIdForParagraphInBook(n);
+                      if (!chapterId) {
+                        Alert.alert('Não encontrado', `O ponto ${n} não foi localizado em nenhum capítulo.`);
+                        return;
+                      }
+
+                      router.push({
+                        pathname: '/livro/[slug]/capitulo/[id]',
+                        params: { slug, id: chapterId.toString(), paragraph: n.toString() },
+                      });
+                    }
                   }}
                 />
               </View>
 
-              {isNumericCatecismoQuery ? (
+              {isCatecismo && isNumericCatecismoQuery ? (
                 <Pressable
                   style={[styles.goButton, { backgroundColor: colors.primary }]}
                   onPress={() => {
-                    const n = parseInt(trimmedCatecismoQuery, 10);
+                    const n = parseInt(trimmedQuery, 10);
                     if (!Number.isFinite(n) || n <= 0) {
                       Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
                       return;
@@ -164,17 +262,69 @@ export default function BookScreen() {
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </Pressable>
               ) : null}
+
+              {isJosemariaBook && isNumericJosemariaQuery ? (
+                <Pressable
+                  style={[styles.goButton, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    const n = parseInt(trimmedQuery, 10);
+                    if (!Number.isFinite(n) || n <= 0) {
+                      Alert.alert('Número inválido', 'Digite um número de ponto válido.');
+                      return;
+                    }
+
+                    const text = findParagraphTextInBook(n);
+                    if (!text) {
+                      Alert.alert('Não encontrado', `O ponto ${n} não foi encontrado neste livro.`);
+                      return;
+                    }
+
+                    const chapterId = findChapterIdForParagraphInBook(n);
+                    if (!chapterId) {
+                      Alert.alert('Não encontrado', `O ponto ${n} não foi localizado em nenhum capítulo.`);
+                      return;
+                    }
+
+                    router.push({
+                      pathname: '/livro/[slug]/capitulo/[id]',
+                      params: { slug, id: chapterId.toString(), paragraph: n.toString() },
+                    });
+                  }}
+                >
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </Pressable>
+              ) : null}
             </View>
 
-            <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
-              Dica: números levam ao parágrafo (destacado). Texto filtra os temas.
-            </Text>
+            {isCatecismo ? (
+              <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
+                Dica: números levam ao parágrafo (destacado). Texto filtra os temas.
+              </Text>
+            ) : isFrasesDeSantos ? (
+              <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
+                Dica: a busca considera apenas o nome do santo.
+              </Text>
+            ) : (
+              <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
+                Dica: números levam ao ponto (destacado). Texto filtra os temas.
+              </Text>
+            )}
           </View>
         ) : null}
 
         {/* Lista de capítulos */}
         <View style={styles.chaptersSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Capítulos</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {isViaSacra 
+              ? 'Estações' 
+              : isCatecismo 
+                ? 'Temas' 
+                : isFrasesDeSantos 
+                  ? 'Santos'
+                  : isMisteriosTerco
+                    ? 'Grupos de Mistérios'
+                    : 'Capítulos'}
+          </Text>
           {chaptersToShow.map((chapter, index) => (
             <Animated.View
               key={chapter.chapter}
@@ -183,6 +333,10 @@ export default function BookScreen() {
               <ChapterCard
                 chapter={chapter}
                 bookColor={book.color}
+                hideNumberBadge={isFrasesDeSantos || isMisteriosTerco}
+                hideItemCount={isViaSacra || isMisteriosTerco}
+                itemLabelSingular={isFrasesDeSantos ? 'frase' : isMisteriosTerco ? 'mistério' : 'parágrafo'}
+                itemLabelPlural={isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos'}
                 onPress={() => router.push(`/livro/${slug}/capitulo/${chapter.chapter}`)}
               />
             </Animated.View>

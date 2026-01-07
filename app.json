@@ -4,7 +4,7 @@
     "slug": "AppCatolico",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo-app.png",
+    "icon": "./assets/nova-logo-app.png",
     "scheme": "appcatolico",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/logo-app.png"
+        "foregroundImage": "./assets/nova-logo-app.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -22,14 +22,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/logo-app.png"
+      "favicon": "./assets/nova-logo-app.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logo-app.png",
+          "image": "./assets/nova-logo-app.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -50,7 +50,7 @@
       }
     },
     "splash": {
-      "image": "./assets/logo-app.png",
+      "image": "./assets/nova-logo-app.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     }

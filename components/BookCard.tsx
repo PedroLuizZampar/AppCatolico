@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, borderRadius, typography, shadows } from '@/lib/theme/tokens';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { BookData } from '@/lib/types';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface BookCardProps {
   book: BookData;
@@ -37,7 +37,16 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onPress }) => {
         </Text>
         <View style={[styles.footer, { borderTopColor: colors.divider }]}>
           <Text style={[styles.chapterCount, { color: colors.textSecondary }]}>
-            {book.data.chapters.length} capítulos
+            {book.data.chapters.length}{' '}
+            {book.slug === 'frases-de-santos'
+              ? 'santos'
+              : book.slug === 'via-sacra'
+                ? 'estações'
+                : book.slug === 'catecismo'
+                  ? 'temas'
+                  : book.slug === 'misterios-terco'
+                    ? 'grupos'
+                    : 'capítulos'}
           </Text>
         </View>
       </View>

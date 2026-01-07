@@ -1,31 +1,34 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { MeditationShareCard } from '@/components/MeditationShareCard';
+import { BOOKS } from '@/lib/data';
+import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { FavoriteParagraph } from '@/lib/types';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
+  ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
-  Dimensions,
-  Alert,
-  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, Stack } from 'expo-router';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, borderRadius, typography, shadows } from '@/lib/theme/tokens';
-import { BookData, FavoriteParagraph } from '@/lib/types';
-import { BOOKS } from '@/lib/data';
 import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
-import { MeditationShareCard } from '@/components/MeditationShareCard';
-import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
 
 // Função para pegar um parágrafo aleatório de qualquer livro
 const getRandomParagraph = () => {
-  const randomBook = BOOKS[Math.floor(Math.random() * BOOKS.length)];
+  const allowedSlugs = new Set(['caminho', 'sulco', 'forja', 'frases-de-santos']);
+  const eligibleBooks = BOOKS.filter(b => allowedSlugs.has(b.slug));
+  const sourceBooks = eligibleBooks.length > 0 ? eligibleBooks : BOOKS;
+
+  const randomBook = sourceBooks[Math.floor(Math.random() * sourceBooks.length)];
   const randomChapter = randomBook.data.chapters[
     Math.floor(Math.random() * randomBook.data.chapters.length)
   ];
@@ -140,7 +143,7 @@ export default function MeditacaoScreen() {
           paragraphNumber: meditation.number,
           paragraphText: meditation.text,
           timestamp: Date.now(),
-          type: 'livro',
+          type: meditation.bookSlug === 'frases-de-santos' ? 'frases' : 'livro',
         };
         await addFavorite(newFavorite);
       }
@@ -198,7 +201,9 @@ export default function MeditacaoScreen() {
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
-                Cap. {meditation.chapterNumber} · {meditation.chapterName}
+                {meditation.bookSlug === 'frases-de-santos'
+                  ? meditation.chapterName
+                  : `Cap. ${meditation.chapterNumber} · ${meditation.chapterName}`}
               </Text>
               <View style={[styles.numberBadge, { backgroundColor: meditation.bookColor }]}>
                 <Text style={styles.numberText}>#{meditation.number}</Text>
@@ -253,6 +258,7 @@ export default function MeditacaoScreen() {
           bookAuthor={meditation.bookAuthor}
           bookColor={meditation.bookColor}
           date={new Date().toLocaleDateString('pt-BR')}
+          hideChapterNumber={meditation.bookSlug === 'frases-de-santos'}
         />
       </View>
     </View>

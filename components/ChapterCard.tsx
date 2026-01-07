@@ -1,16 +1,28 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, borderRadius, typography, shadows } from '@/lib/theme/tokens';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { Chapter } from '@/lib/types';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ChapterCardProps {
   chapter: Chapter;
   bookColor: string;
   onPress: () => void;
+  hideNumberBadge?: boolean;
+  hideItemCount?: boolean;
+  itemLabelSingular?: string;
+  itemLabelPlural?: string;
 }
 
-export const ChapterCard: React.FC<ChapterCardProps> = ({ chapter, bookColor, onPress }) => {
+export const ChapterCard: React.FC<ChapterCardProps> = ({
+  chapter,
+  bookColor,
+  onPress,
+  hideNumberBadge,
+  hideItemCount,
+  itemLabelSingular = 'parágrafo',
+  itemLabelPlural = 'parágrafos',
+}) => {
   const { isDark } = useTheme();
   const colors = getColors(isDark);
 
@@ -27,16 +39,20 @@ export const ChapterCard: React.FC<ChapterCardProps> = ({ chapter, bookColor, on
       ]} 
       onPress={onPress}
     >
-      <View style={[styles.numberContainer, { backgroundColor: colors.surfaceLight }]}>
-        <Text style={[styles.numberText, { color: colors.text }]}>{chapter.chapter}</Text>
-      </View>
+      {!hideNumberBadge ? (
+        <View style={[styles.numberContainer, { backgroundColor: colors.surfaceLight }]}>
+          <Text style={[styles.numberText, { color: colors.text }]}>{chapter.chapter}</Text>
+        </View>
+      ) : null}
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
           {chapter.name}
         </Text>
-        <Text style={[styles.info, { color: colors.textSecondary }]}>
-          {chapter.paragraphs.length} {chapter.paragraphs.length === 1 ? 'parágrafo' : 'parágrafos'}
-        </Text>
+        {!hideItemCount ? (
+          <Text style={[styles.info, { color: colors.textSecondary }]}>
+            {chapter.paragraphs.length} {chapter.paragraphs.length === 1 ? itemLabelSingular : itemLabelPlural}
+          </Text>
+        ) : null}
       </View>
       <View style={styles.arrow}>
         <Text style={[styles.arrowText, { color: colors.textMuted }]}>→</Text>

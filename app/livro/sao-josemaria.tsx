@@ -25,11 +25,6 @@ export default function SaoJosemariaScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.duration(350).delay(80)} style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>São Josemaria</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Caminho • Sulco • Forja</Text>
-        </Animated.View>
-
         <View style={styles.booksSection}>
           {books.map((book, index) => (
             <Animated.View key={book.id} entering={FadeInDown.duration(350).delay(140 + index * 90)}>

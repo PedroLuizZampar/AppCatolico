@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  FlatList,
-  Dimensions,
-  ScrollView,
-  Pressable,
-  Modal,
-} from 'react-native';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, borderRadius, typography, shadows } from '@/lib/theme/tokens';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 // --- Interfaces de Dados (Tipagem) ---
 interface LeituraItem {
@@ -131,6 +131,15 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
   let processedText = text;
   let lastVerseNumber = 0;
 
+  // Normaliza marcações do tipo "4, 1Caríssimos" ou "4, 1 Caríssimos" para "4,1 Caríssimos"
+  // (capítulo,versículo) - comum quando a leitura atravessa capítulos
+  processedText = processedText.replace(
+    /(\d+)\s*,\s*(\d+[a-d]?)(?=[A-Za-zÀ-ÖØ-öø-ÿ"“])/g,
+    '$1,$2 '
+  );
+  // E garante que "4, 1" vire "4,1" quando já há espaços ao redor
+  processedText = processedText.replace(/(\d+)\s*,\s*(\d+[a-d]?)/g, '$1,$2');
+
   // Corrige casos do tipo "24'O" (número + apóstrofo/aspas + letra), deixando apenas 1 espaço
   // (algumas fontes usam caracteres diferentes para apóstrofo)
   processedText = processedText.replace(/(\d+)[‘’'´`′](?=[A-Za-zÀ-ÖØ-öø-ÿ"“])/g, '$1 ');
@@ -199,14 +208,14 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
   const parts: Array<{ isNumber: boolean; text: string }> = [];
   
   // Split inteligente: Procura por "Número+Letra(opcional)" isolado por espaços ou pontuação
-  const splitRegex = /(\d+[a-d]?)(?=\s)/g;
+  const splitRegex = /(\d+,\d+[a-d]?|\d+[a-d]?)(?=\s)/g;
   
   const tokens = processedText.split(splitRegex);
 
   tokens.forEach(token => {
     if (!token) return;
     // Verifica se é estritamente um número de versículo (ex: "17", "17a")
-    if (/^\d+[a-d]?$/.test(token)) {
+    if (/^\d+,\d+[a-d]?$/.test(token) || /^\d+[a-d]?$/.test(token)) {
       parts.push({ isNumber: true, text: token });
     } else {
       parts.push({ isNumber: false, text: token });
@@ -219,7 +228,7 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
         {parts.map((part, index) =>
           part.isNumber ? (
             <Text key={index} style={[styles.superscript, { color: color + 'CC' }]}>
-              {part.text}
+              {' '}{part.text}{' '}
             </Text>
           ) : (
             <Text key={index}>{part.text}</Text>
@@ -903,10 +912,10 @@ const styles = StyleSheet.create({
     ...typography.bodyLarge,
     lineHeight: 30,
     textAlign: 'justify',
+    includeFontPadding: false,
   },
   superscript: {
     fontSize: 11,
-    lineHeight: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
   },

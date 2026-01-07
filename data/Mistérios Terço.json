@@ -1,0 +1,137 @@
+[
+  {
+    "grupo": "Mistérios Gozosos",
+    "dias": [
+      "Segunda-feira",
+      "Sábado"
+    ],
+    "misterios": [
+      {
+        "ordem": "1º Mistério",
+        "titulo": "A Anunciação do Anjo Gabriel à Virgem Maria",
+        "meditacao": "Disse então Maria: 'Eis aqui a serva do Senhor; faça-se em mim segundo a tua palavra.' (Lucas 1, 38)"
+      },
+      {
+        "ordem": "2º Mistério",
+        "titulo": "A Visitação de Maria à sua prima Santa Isabel",
+        "meditacao": "Isabel exclamou em alta voz: 'Bendita és tu entre as mulheres e bendito é o fruto do teu ventre.' (Lucas 1, 42)"
+      },
+      {
+        "ordem": "3º Mistério",
+        "titulo": "O Nascimento de Jesus em Belém",
+        "meditacao": "E deu à luz o seu filho primogênito, envolveu-o em panos e deitou-o numa manjedoura, porque não havia lugar para eles na estalagem. (Lucas 2, 7)"
+      },
+      {
+        "ordem": "4º Mistério",
+        "titulo": "A Apresentação do Menino Jesus no Templo",
+        "meditacao": "Levaram-no a Jerusalém para o apresentarem ao Senhor, como está escrito na Lei do Senhor. (Lucas 2, 22)"
+      },
+      {
+        "ordem": "5º Mistério",
+        "titulo": "A Perda e o Encontro do Menino Jesus no Templo",
+        "meditacao": "Três dias depois o acharam no templo, sentado no meio dos doutores, ouvindo-os e interrogando-os. (Lucas 2, 46)"
+      }
+    ]
+  },
+  {
+    "grupo": "Mistérios Luminosos",
+    "dias": [
+      "Quinta-feira"
+    ],
+    "misterios": [
+      {
+        "ordem": "1º Mistério",
+        "titulo": "O Batismo de Jesus no Rio Jordão",
+        "meditacao": "E uma voz do céu dizia: 'Este é o meu Filho amado, em quem me comprazo.' (Mateus 3, 17)"
+      },
+      {
+        "ordem": "2º Mistério",
+        "titulo": "A Auto-revelação de Jesus nas Bodas de Caná",
+        "meditacao": "Sua mãe disse aos serventes: 'Fazei tudo o que ele vos disser.' (João 2, 5)"
+      },
+      {
+        "ordem": "3º Mistério",
+        "titulo": "O Anúncio do Reino de Deus convidando à conversão",
+        "meditacao": "O tempo completou-se e o Reino de Deus está próximo. Arrependei-vos e crede no Evangelho. (Marcos 1, 15)"
+      },
+      {
+        "ordem": "4º Mistério",
+        "titulo": "A Transfiguração de Jesus",
+        "meditacao": "E transfigurou-se diante deles; o seu rosto resplandeceu como o sol, e as suas vestes tornaram-se brancas como a luz. (Mateus 17, 2)"
+      },
+      {
+        "ordem": "5º Mistério",
+        "titulo": "A Instituição da Eucaristia",
+        "meditacao": "Tomou o pão e, tendo dado graças, partiu-o e deu-lho, dizendo: 'Isto é o meu corpo, que é dado por vós; fazei isto em memória de mim.' (Lucas 22, 19)"
+      }
+    ]
+  },
+  {
+    "grupo": "Mistérios Dolorosos",
+    "dias": [
+      "Terça-feira",
+      "Sexta-feira"
+    ],
+    "misterios": [
+      {
+        "ordem": "1º Mistério",
+        "titulo": "A Agonia de Jesus no Horto das Oliveiras",
+        "meditacao": "E, estando em agonia, orava mais intensamente. E o seu suor tornou-se em grandes gotas de sangue, que corriam até ao chão. (Lucas 22, 44)"
+      },
+      {
+        "ordem": "2º Mistério",
+        "titulo": "A Flagelação de Jesus atado à coluna",
+        "meditacao": "Pilatos, querendo satisfazer a multidão, soltou-lhes Barrabás, e, depois de mandar açoitar a Jesus, entregou-o para ser crucificado. (Marcos 15, 15)"
+      },
+      {
+        "ordem": "3º Mistério",
+        "titulo": "A Coroação de Espinhos",
+        "meditacao": "Os soldados teceram uma coroa de espinhos e puseram-lha sobre a cabeça, e vestiram-no com um manto de púrpura. (João 19, 2)"
+      },
+      {
+        "ordem": "4º Mistério",
+        "titulo": "Jesus carrega a Cruz até o Calvário",
+        "meditacao": "Tomaram, pois, a Jesus; e ele, carregando a sua própria cruz, saiu para o lugar chamado Caveira. (João 19, 17)"
+      },
+      {
+        "ordem": "5º Mistério",
+        "titulo": "A Crucificação e Morte de Jesus",
+        "meditacao": "Jesus clamou em alta voz: 'Pai, nas tuas mãos entrego o meu espírito'. E, dito isto, expirou. (Lucas 23, 46)"
+      }
+    ]
+  },
+  {
+    "grupo": "Mistérios Gloriosos",
+    "dias": [
+      "Quarta-feira",
+      "Domingo"
+    ],
+    "misterios": [
+      {
+        "ordem": "1º Mistério",
+        "titulo": "A Ressurreição de Jesus",
+        "meditacao": "Por que buscais entre os mortos aquele que vive? Ele não está aqui, mas ressuscitou. (Lucas 24, 5-6)"
+      },
+      {
+        "ordem": "2º Mistério",
+        "titulo": "A Ascensão de Jesus ao Céu",
+        "meditacao": "O Senhor Jesus, depois de lhes ter falado, foi recebido no céu e assentou-se à direita de Deus. (Marcos 16, 19)"
+      },
+      {
+        "ordem": "3º Mistério",
+        "titulo": "A Vinda do Espírito Santo sobre os Apóstolos e Maria",
+        "meditacao": "Todos ficaram cheios do Espírito Santo e começaram a falar noutras línguas, conforme o Espírito lhes concedia que falassem. (Atos 2, 4)"
+      },
+      {
+        "ordem": "4º Mistério",
+        "titulo": "A Assunção de Maria ao Céu em corpo e alma",
+        "meditacao": "Fez em mim grandes coisas o Todo-Poderoso, e santo é o seu nome. (Lucas 1, 49 - Cântico do Magnificat)"
+      },
+      {
+        "ordem": "5º Mistério",
+        "titulo": "A Coroação de Maria como Rainha do Céu e da Terra",
+        "meditacao": "Apareceu no céu um grande sinal: uma mulher vestida de sol, com a lua debaixo dos pés e uma coroa de doze estrelas na cabeça. (Apocalipse 12, 1)"
+      }
+    ]
+  }
+]

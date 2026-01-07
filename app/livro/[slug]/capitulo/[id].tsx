@@ -163,6 +163,8 @@ export default function ChapterScreen() {
   const chapter = book?.data.chapters.find(c => c.chapter === currentChapterId);
   const isCatecismo = slug === 'catecismo';
   const isViaSacra = slug === 'via-sacra';
+  const isFrasesDeSantos = slug === 'frases-de-santos';
+  const isMisteriosTerco = slug === 'misterios-terco';
 
   const viaSacraImage = useMemo(() => {
     if (!isViaSacra) return undefined;
@@ -174,6 +176,14 @@ export default function ChapterScreen() {
     // chapter.name vem como "1° Estação — Título"; queremos só "1° Estação"
     return chapter.name.split('—')[0]?.trim() || chapter.name;
   }, [isViaSacra, chapter?.name]);
+
+  const chapterIndicatorLabel = useMemo(() => {
+    if (isCatecismo) return chapter?.name;
+    if (isViaSacra) return viaSacraStationLabel ?? chapter?.name;
+    if (isFrasesDeSantos) return chapter?.name;
+    if (isMisteriosTerco) return chapter?.name;
+    return chapter?.name;
+  }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel, currentChapterId]);
 
   const viaSacraHeadingColor = useMemo(() => {
     // Queremos um cinza mais claro para diferenciar os títulos (h4)
@@ -213,7 +223,7 @@ export default function ChapterScreen() {
 
   // Scroll até o parágrafo específico (deep link ou busca)
   useEffect(() => {
-    if (isViaSacra) return;
+    if (isViaSacra || isMisteriosTerco) return;
     if (paragraph && chapter) {
       const paragraphs = paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n));
       
@@ -266,7 +276,7 @@ export default function ChapterScreen() {
 
   // Handlers de seleção
   const handleParagraphPress = useCallback((paragraphNum: number) => {
-    if (isViaSacra) return;
+    if (isViaSacra || isMisteriosTerco) return;
     if (longPressActive) {
       if (selectedParagraphs.includes(paragraphNum)) {
         setSelectedParagraphs(prev => {
@@ -292,7 +302,7 @@ export default function ChapterScreen() {
   }, [longPressActive, selectedParagraphs, handleCloseMenu, isViaSacra]);
 
   const handleParagraphLongPress = useCallback((paragraphNum: number) => {
-    if (isViaSacra) return;
+    if (isViaSacra || isMisteriosTerco) return;
     setLongPressActive(true);
     if (!selectedParagraphs.includes(paragraphNum)) {
       setSelectedParagraphs(prev => [...prev, paragraphNum].sort((a, b) => a - b));
@@ -349,11 +359,11 @@ export default function ChapterScreen() {
             bookSlug: slug,
             bookTitle: book.title,
             chapterId: currentChapterId,
-            chapterName: isCatecismo ? chapter.name : `Capítulo ${chapter.chapter}`,
+            chapterName: isCatecismo || isFrasesDeSantos ? chapter.name : `Capítulo ${chapter.chapter}`,
             paragraphNumber: pNum,
             paragraphText: p.text,
             timestamp: Date.now(),
-            type: 'livro',
+            type: isFrasesDeSantos ? 'frases' : 'livro',
             groupId,
             groupRange,
           });
@@ -449,7 +459,7 @@ export default function ChapterScreen() {
         style={[
           styles.navigationBar,
           { backgroundColor: colors.surface, borderBottomColor: colors.border },
-          isViaSacra && { borderBottomWidth: 0 },
+          (isViaSacra || isMisteriosTerco) && { borderBottomWidth: 0 },
         ]}
       >
         <Pressable 
@@ -465,11 +475,15 @@ export default function ChapterScreen() {
 
         <View style={styles.chapterIndicator}>
           <Text
-            style={[styles.chapterIndicatorText, { color: colors.text }]}
+            style={[
+              styles.chapterIndicatorText,
+              { color: colors.text },
+              isViaSacra && styles.chapterIndicatorTextViaSacra,
+            ]}
             numberOfLines={2}
             ellipsizeMode="tail"
           >
-            {isCatecismo ? chapter.name : isViaSacra ? viaSacraStationLabel : `Capítulo ${currentChapterId}`}
+            {chapterIndicatorLabel}
           </Text>
         </View>
 
@@ -486,7 +500,7 @@ export default function ChapterScreen() {
       </View>
 
       {/* Menu Flutuante */}
-      {!isViaSacra && showMenu && selectedParagraphs.length > 0 && (
+      {!isViaSacra && !isMisteriosTerco && showMenu && selectedParagraphs.length > 0 && (
         <GestureDetector gesture={panGesture}>
           <Animated.View
             entering={FadeInDown.duration(300)}
@@ -509,15 +523,15 @@ export default function ChapterScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyParagraphs}>
-                <Ionicons name="copy-outline" size={22} color={colors.primary} />
+                <Ionicons name="copy-outline" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteParagraphs}>
-                <Ionicons name="heart" size={22} color={colors.error} />
+                <Ionicons name="heart" size={18} color={colors.error} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareParagraphs}>
-                <Ionicons name="share-outline" size={22} color={colors.primary} />
+                <Ionicons name="share-outline" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>
@@ -542,15 +556,29 @@ export default function ChapterScreen() {
           ) : null
         }
         renderItem={({ item }) => {
-          if (isViaSacra) {
+          if (isViaSacra || isMisteriosTerco) {
             const label = item.label?.trim();
-            const isVersiculo = label === 'Versículo';
-            const isResposta = label === 'Resposta';
-            const isOracoesTradicionais = label === 'Orações tradicionais';
+            
+            // Para Via Sacra
+            const isVersiculo = isViaSacra && label === 'Versículo';
+            const isResposta = isViaSacra && label === 'Resposta';
+            const isOracoesTradicionais = isViaSacra && label === 'Orações tradicionais';
+            
+            // Para Mistérios do Terço: sempre mostrar label + texto
+            const isMisterioItem = isMisteriosTerco && label;
 
             return (
               <View style={styles.viaSacraField}>
-                {isVersiculo || isResposta ? (
+                {isMisterioItem ? (
+                  <>
+                    <Text style={[styles.misterioLabel, { color: colors.primary }]}>
+                      {label}
+                    </Text>
+                    <Text style={[styles.misterioText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </>
+                ) : isVersiculo || isResposta ? (
                   <Text style={styles.viaSacraInlineLine}>
                     <Text style={[styles.viaSacraInlinePrefix, { color: colors.textMuted }]}>
                       {isVersiculo ? '℣:' : '℟:'}{' '}
@@ -623,12 +651,13 @@ export default function ChapterScreen() {
           text={selectedParagraphs.length === 1 ? chapter.paragraphs.find(p => p.number === selectedParagraphs[0])?.text || '' : ''}
           number={selectedParagraphs.length === 1 ? selectedParagraphs[0] : 0}
           chapterNumber={currentChapterId}
-          chapterName={isCatecismo || isViaSacra ? chapter.name : `Capítulo ${currentChapterId}`}
+          chapterName={isCatecismo || isViaSacra || isFrasesDeSantos || isMisteriosTerco ? chapter.name : `Capítulo ${currentChapterId}`}
           bookTitle={book.title}
           bookIcon={book.icon}
           bookAuthor={book.author}
           bookColor={book.color}
           date={new Date().toLocaleDateString('pt-BR')}
+          hideChapterNumber={isFrasesDeSantos || isMisteriosTerco}
         />
       </View>
     </View>
@@ -675,6 +704,9 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  chapterIndicatorTextViaSacra: {
+    ...typography.h4,
   },
   scrollContent: {
     padding: spacing.lg,
@@ -756,6 +788,16 @@ const styles = StyleSheet.create({
   viaSacraTraditionText: {
     ...typography.h4,
     lineHeight: 24,
+  },
+  misterioLabel: {
+    ...typography.h4,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  misterioText: {
+    ...typography.body,
+    lineHeight: 26,
+    fontSize: 16,
   },
   menuContainerFixed: {
     position: 'absolute',

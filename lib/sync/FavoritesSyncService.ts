@@ -25,6 +25,15 @@ export class FavoritesSyncService {
     let needsMigration = false;
     
     const migrated = favorites.map(fav => {
+      // Normalizar Frases de Santos para sempre usar categoria dedicada
+      if (fav.bookSlug === 'frases-de-santos' && fav.type !== 'frases') {
+        needsMigration = true;
+        return {
+          ...fav,
+          type: 'frases' as const,
+        };
+      }
+
       if (!fav.type) {
         needsMigration = true;
         // Detectar tipo baseado no formato do bookSlug
