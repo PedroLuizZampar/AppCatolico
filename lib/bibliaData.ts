@@ -68,18 +68,18 @@ export const bibliaStats = {
 };
 
 // Buscar versículos (para busca e favoritos)
-export function buscarVersiculos(query: string): Array<{
+export function buscarVersiculos(query: string): {
   livro: string;
   capitulo: number;
   versiculo: number;
   texto: string;
-}> {
-  const results: Array<{
+}[] {
+  const results: {
     livro: string;
     capitulo: number;
     versiculo: number;
     texto: string;
-  }> = [];
+  }[] = [];
 
   const searchTerm = query.toLowerCase();
 

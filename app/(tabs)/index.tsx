@@ -64,7 +64,7 @@ export default function HomeScreen() {
           >
             <View style={styles.meditationContent}>
               <View style={styles.meditationIcon}>
-                <Text style={styles.meditationEmoji}>🙏</Text>
+                <Text style={styles.meditationEmoji}>💭</Text>
               </View>
               <View style={styles.meditationText}>
                 <Text style={styles.meditationTitle}>Meditação Rápida</Text>

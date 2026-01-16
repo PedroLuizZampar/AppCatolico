@@ -11,6 +11,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,7 +20,6 @@ import {
   View
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
 // Função para pegar um parágrafo aleatório de qualquer livro
@@ -36,6 +36,9 @@ const getRandomParagraph = () => {
     Math.floor(Math.random() * randomChapter.paragraphs.length)
   ];
 
+  // Na Meditação Rápida: Caminho com paleta roxa; Frases de Santos mantém azul.
+  const bookColor = randomBook.slug === 'caminho' ? '#9B59B6' : randomBook.color;
+
   return {
     text: randomParagraph.text,
     number: randomParagraph.number,
@@ -44,21 +47,24 @@ const getRandomParagraph = () => {
     bookTitle: randomBook.title,
     bookSlug: randomBook.slug,
     bookIcon: randomBook.icon,
-    bookColor: randomBook.color,
+    bookColor,
     bookAuthor: randomBook.author,
   };
 };
+
+type MeditationData = ReturnType<typeof getRandomParagraph>;
+let cachedMeditation: MeditationData | null = null;
 
 export default function MeditacaoScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
-  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [meditation, setMeditation] = useState(() => getRandomParagraph());
+  const [meditation, setMeditation] = useState<MeditationData>(() => cachedMeditation ?? getRandomParagraph());
   const [refreshCount, setRefreshCount] = useState(0);
   const [isSharing, setIsSharing] = useState(false);
   const shareCardRef = useRef<View>(null);
+  const ignoreNextActiveRefreshUntilRef = useRef<number>(0);
   
   // Hooks de favoritos
   const { favorites, addFavorite, removeFavorite } = useFavoritesSync();
@@ -87,9 +93,39 @@ export default function MeditacaoScreen() {
     }, 500);
   }, []);
 
+  // Persistir a meditação atual enquanto o app estiver aberto.
+  React.useEffect(() => {
+    cachedMeditation = meditation;
+  }, [meditation]);
+
+  // Atualizar somente quando o usuário sair do app (background) e voltar.
+  React.useEffect(() => {
+    let previousState = AppState.currentState;
+    const subscription = AppState.addEventListener('change', nextState => {
+      const wasInBackground = previousState === 'inactive' || previousState === 'background';
+      if (wasInBackground && nextState === 'active') {
+        const now = Date.now();
+        if (ignoreNextActiveRefreshUntilRef.current > 0 && now <= ignoreNextActiveRefreshUntilRef.current) {
+          ignoreNextActiveRefreshUntilRef.current = 0;
+          previousState = nextState;
+          return;
+        }
+        setMeditation(getRandomParagraph());
+        setRefreshCount(prev => prev + 1);
+      }
+      previousState = nextState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   const handleShare = useCallback(async () => {
     try {
       setIsSharing(true);
+      // O share sheet pode colocar o app em background/inactive; não queremos trocar a meditação ao voltar.
+      ignoreNextActiveRefreshUntilRef.current = Date.now() + 15000;
       
       // Verifica se o compartilhamento está disponível
       const isAvailable = await Sharing.isAvailableAsync();
@@ -147,7 +183,7 @@ export default function MeditacaoScreen() {
         };
         await addFavorite(newFavorite);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível atualizar os favoritos');
     }
   };

@@ -49,7 +49,7 @@ export default function FavoritesScreen() {
   const { favorites, loading, removeFavorite: removeFromSync, clearAll, cleanDuplicates } = useFavoritesSync();
 
   const [filterType, setFilterType] = useState<FilterType>('todos');
-  const [sortType, setSortType] = useState<SortType>('recente');
+  const [sortType] = useState<SortType>('recente');
 
   // Limpar duplicatas ao carregar
   React.useEffect(() => {
@@ -65,7 +65,7 @@ export default function FavoritesScreen() {
     };
     
     checkAndCleanDuplicates();
-  }, []);
+  }, [cleanDuplicates]);
 
   // Filtrar, agrupar e ordenar favoritos
   const processedFavorites: FavoriteWithGroup[] = useMemo(() => {

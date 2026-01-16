@@ -45,7 +45,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onPress }) => {
                 : book.slug === 'catecismo'
                   ? 'temas'
                   : book.slug === 'misterios-terco'
-                    ? 'grupos'
+                    ? 'mistérios'
                     : 'capítulos'}
           </Text>
         </View>

@@ -8,22 +8,19 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "artifactName": "Sanctus.apk"
+        "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "artifactName": "Sanctus.apk"
+        "buildType": "apk"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "aab",
-        "artifactName": "Sanctus.aab"
+        "buildType": "app-bundle"
       }
     }
   },

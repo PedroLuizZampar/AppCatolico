@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import Animated, { FadeIn, FadeInDown, Easing } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius, shadows } from '@/lib/theme/tokens';
 import { getLivroBiblicoBySlug } from '@/lib/bibliaData';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeNavigation } from '../../../lib/hooks/useSafeNavigation'; // Importe o novo hook
 
 export default function LivroBibliaScreen() {

@@ -205,7 +205,7 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
   });
 
   // 3. Renderização (Lógica original de split, agora com texto limpo)
-  const parts: Array<{ isNumber: boolean; text: string }> = [];
+  const parts: { isNumber: boolean; text: string }[] = [];
   
   // Split inteligente: Procura por "Número+Letra(opcional)" isolado por espaços ou pontuação
   const splitRegex = /(\d+,\d+[a-d]?|\d+[a-d]?)(?=\s)/g;
@@ -557,7 +557,7 @@ export default function LiturgiaScreen() {
       
       const json = await response.json();
       setLiturgy(json);
-    } catch (e: any) {
+    } catch {
       setError('Não foi possível carregar a liturgia. Verifique sua conexão.');
     } finally {
       setLoading(false);
@@ -579,11 +579,9 @@ export default function LiturgiaScreen() {
     
     const { leituras } = liturgy;
     const allPages = [];
-    let readingCount = 0;
     
     // Primeira Leitura
     if (leituras.primeiraLeitura && leituras.primeiraLeitura.length > 0) {
-      readingCount++;
       allPages.push({ 
         type: 'reading', 
         title: '1ª Leitura',
@@ -604,7 +602,6 @@ export default function LiturgiaScreen() {
     
     // Segunda Leitura (se existir)
     if (leituras.segundaLeitura && leituras.segundaLeitura.length > 0) {
-      readingCount++;
       allPages.push({ 
         type: 'reading', 
         title: '2ª Leitura',

@@ -1,20 +1,21 @@
 {
   "expo": {
-    "name": "AppCatolico",
+    "name": "Sanctus",
     "slug": "AppCatolico",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/nova-logo-app.png",
+    "icon": "./assets/nova-logo-app.jpg",
     "scheme": "appcatolico",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pedro_luiz_zampar.AppCatolico"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/nova-logo-app.png"
+        "foregroundImage": "./assets/nova-logo-app.jpg"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -22,14 +23,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/nova-logo-app.png"
+      "favicon": "./assets/nova-logo-app.jpg"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/nova-logo-app.png",
+          "image": "./assets/nova-logo-app.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -50,7 +51,7 @@
       }
     },
     "splash": {
-      "image": "./assets/nova-logo-app.png",
+      "image": "./assets/nova-logo-app.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     }

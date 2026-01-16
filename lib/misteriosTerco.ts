@@ -41,7 +41,7 @@ export const misteriosTercoBook: Book = {
     pages: 0,
   },
   metadata: {
-    title: 'Mistérios do Terço',
+    title: 'Mistérios do Rosário',
     author: 'Tradição Católica',
     subject: 'Mistérios do Santo Rosário',
     keywords: 'terco,rosario,misterios,maria,oracao',

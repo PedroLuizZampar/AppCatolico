@@ -75,18 +75,18 @@ export const BOOKS: BookData[] = [
     description: 'Meditação da Paixão de Cristo em 14 estações, com contemplação, oração e cânticos.',
     color: '#4A90E2',
     gradient: ['#4A90E2', '#357ABD'],
-    icon: '🛐',
+    icon: '🩸',
     data: viaSacraBook,
   },
   {
     id: '7',
     slug: 'misterios-terco',
-    title: 'Mistérios do Terço',
+    title: 'Mistérios do Rosário',
     author: 'Tradição Católica',
     description: 'Os 20 mistérios do Santo Rosário para meditação: Gozosos, Luminosos, Dolorosos e Gloriosos.',
     color: '#9B59B6',
     gradient: ['#9B59B6', '#8E44AD'],
-    icon: '📿',
+    icon: '🥀',
     data: misteriosTercoBook,
   },
 ];
@@ -105,20 +105,20 @@ export const getChapter = (slug: string, chapterId: number) => {
 };
 
 // Função para buscar em todos os livros
-export const searchInBooks = (query: string): Array<{
+export const searchInBooks = (query: string): {
   book: BookData;
   chapter: number;
   chapterName: string;
   paragraph: number;
   text: string;
-}> => {
-  const results: Array<{
+}[] => {
+  const results: {
     book: BookData;
     chapter: number;
     chapterName: string;
     paragraph: number;
     text: string;
-  }> = [];
+  }[] = [];
   
   const searchTerm = query.toLowerCase().trim();
   if (!searchTerm) return results;

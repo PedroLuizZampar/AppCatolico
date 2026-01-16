@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCard } from '@/components/BookCard';
 import { BOOKS } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors, spacing, typography } from '@/lib/theme/tokens';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const JOSEMARIA_SLUGS = new Set(['caminho', 'sulco', 'forja']);
 

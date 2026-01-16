@@ -1,19 +1,19 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Share, FlatList, Dimensions, Animated as RNAnimated } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { MeditationShareCard } from '@/components/MeditationShareCard';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { captureRef } from 'react-native-view-shot';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { MeditationShareCard } from '@/components/MeditationShareCard';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, FlatList, Pressable, Animated as RNAnimated, Share, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { captureRef } from 'react-native-view-shot';
 
-import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius } from '@/lib/theme/tokens';
-import { getLivroBiblicoBySlug, getCapituloBiblia } from '@/lib/bibliaData';
-import { Versiculo, FavoriteParagraph } from '@/lib/types';
+import { getCapituloBiblia, getLivroBiblicoBySlug } from '@/lib/bibliaData';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
+import { FavoriteParagraph, Versiculo } from '@/lib/types';
 
 // Componente memoizado para cada versículo
 const VersiculoItem = React.memo<{
@@ -93,7 +93,7 @@ export default function CapituloBibliaScreen() {
   const flatListRef = useRef<FlatList>(null);
   const shareCardRef = useRef<View>(null);
   const highlightOpacity = useRef(new RNAnimated.Value(0)).current;
-  const { favorites, isFavorite: checkIsFavorite, addFavorite, addFavorites, removeFavorite, removeFavorites } = useFavoritesSync();
+  const { favorites, addFavorites, removeFavorites } = useFavoritesSync();
   
   const [selectedVersiculos, setSelectedVersiculos] = useState<number[]>([]);
   const [showMenu, setShowMenu] = useState(false);
@@ -129,7 +129,7 @@ export default function CapituloBibliaScreen() {
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
     }
-  }, [showMenu]);
+  }, [showMenu, translateX, translateY]);
   
   // Converter ID para número
   const currentChapterId = parseInt(idStr || '1', 10);
@@ -163,6 +163,8 @@ export default function CapituloBibliaScreen() {
 
   // Scroll até o versículo específico (deep link ou busca)
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
     if (paragraph && capitulo) {
       const paragraphs = paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n));
       
@@ -172,7 +174,7 @@ export default function CapituloBibliaScreen() {
         
         if (index !== -1) {
           // Pequeno delay para garantir que a lista renderizou
-          setTimeout(() => {
+          timers.push(setTimeout(() => {
             flatListRef.current?.scrollToIndex({ 
               index, 
               animated: true,
@@ -183,7 +185,7 @@ export default function CapituloBibliaScreen() {
             setIsDeepLinking(true);
             highlightOpacity.setValue(1);
             
-            const highlightTimer = setTimeout(() => {
+            timers.push(setTimeout(() => {
               RNAnimated.timing(highlightOpacity, {
                 toValue: 0,
                 duration: 500,
@@ -193,12 +195,15 @@ export default function CapituloBibliaScreen() {
                 // setSelectedVersiculos([]); 
                 setIsDeepLinking(false);
               });
-            }, 1000);
-          }, 500);
+            }, 1000));
+          }, 500));
         }
       }
     }
-  }, [paragraph, currentChapterId, capitulo]);
+    return () => {
+      for (const t of timers) clearTimeout(t);
+    };
+  }, [paragraph, currentChapterId, capitulo, highlightOpacity]);
 
   const handleCloseMenu = useCallback(() => {
     setShowMenu(false);

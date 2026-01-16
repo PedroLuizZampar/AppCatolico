@@ -19,7 +19,7 @@ type ViaSacraStation = {
 type ViaSacraRaw = {
   oracao_inicial?: string;
   stations: ViaSacraStation[];
-  images?: Array<{ file: string; width: number; height: number }>;
+  images?: { file: string; width: number; height: number }[];
 };
 
 const VIA_SACRA = viaSacraRaw as ViaSacraRaw;

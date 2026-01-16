@@ -117,7 +117,7 @@ export default function ChapterScreen() {
   const flatListRef = useRef<FlatList>(null);
   const shareCardRef = useRef<View>(null);
   const highlightOpacity = useRef(new RNAnimated.Value(0)).current;
-  const { favorites, isFavorite: checkIsFavorite, addFavorite, addFavorites, removeFavorite, removeFavorites } = useFavoritesSync();
+  const { favorites, isFavorite: checkIsFavorite, addFavorites, removeFavorites } = useFavoritesSync();
   
   const [selectedParagraphs, setSelectedParagraphs] = useState<number[]>([]);
   const [showMenu, setShowMenu] = useState(false);
@@ -153,7 +153,7 @@ export default function ChapterScreen() {
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
     }
-  }, [showMenu]);
+  }, [showMenu, translateX, translateY]);
   
   // Converter ID para número
   const currentChapterId = parseInt(id || '1', 10);
@@ -183,7 +183,7 @@ export default function ChapterScreen() {
     if (isFrasesDeSantos) return chapter?.name;
     if (isMisteriosTerco) return chapter?.name;
     return chapter?.name;
-  }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel, currentChapterId]);
+  }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel]);
 
   const viaSacraHeadingColor = useMemo(() => {
     // Queremos um cinza mais claro para diferenciar os títulos (h4)
@@ -266,7 +266,7 @@ export default function ChapterScreen() {
         }
       }
     }
-  }, [paragraph, currentChapterId, chapter, isViaSacra]);
+  }, [paragraph, currentChapterId, chapter, isViaSacra, isMisteriosTerco, highlightOpacity]);
 
   const handleCloseMenu = useCallback(() => {
     setShowMenu(false);
@@ -299,7 +299,7 @@ export default function ChapterScreen() {
         setShowMenu(true);
       }
     }
-  }, [longPressActive, selectedParagraphs, handleCloseMenu, isViaSacra]);
+  }, [longPressActive, selectedParagraphs, handleCloseMenu, isViaSacra, isMisteriosTerco]);
 
   const handleParagraphLongPress = useCallback((paragraphNum: number) => {
     if (isViaSacra || isMisteriosTerco) return;
@@ -308,7 +308,7 @@ export default function ChapterScreen() {
       setSelectedParagraphs(prev => [...prev, paragraphNum].sort((a, b) => a - b));
     }
     setShowMenu(true);
-  }, [selectedParagraphs, isViaSacra]);
+  }, [selectedParagraphs, isViaSacra, isMisteriosTerco]);
 
   // Ações do Menu
   const handleCopyParagraphs = async () => {

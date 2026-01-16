@@ -99,7 +99,7 @@ export default function BookScreen() {
       : isFrasesDeSantos 
         ? 'santos'
         : isMisteriosTerco
-          ? 'grupos'
+          ? 'mistérios'
           : 'capítulos';
   const statsLabelParagraphs = isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos';
 
@@ -322,7 +322,7 @@ export default function BookScreen() {
                 : isFrasesDeSantos 
                   ? 'Santos'
                   : isMisteriosTerco
-                    ? 'Grupos de Mistérios'
+                    ? 'Mistérios'
                     : 'Capítulos'}
           </Text>
           {chaptersToShow.map((chapter, index) => (

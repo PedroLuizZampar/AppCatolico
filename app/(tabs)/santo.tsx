@@ -1,19 +1,19 @@
+import { fetchSantoDoDia, SantoContentBlock, SantoDoDiaResponse } from '@/lib/santoDoDia';
+import { useTheme } from '@/lib/theme/ThemeContext';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
   ActivityIndicator,
   Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius, shadows } from '@/lib/theme/tokens';
-import { fetchSantoDoDia, SantoContentBlock, SantoDoDiaResponse } from '@/lib/santoDoDia';
 
 const monthLabelPt = (month: string | null | undefined): string | null => {
   if (!month) return null;
@@ -61,8 +61,8 @@ export default function SantoScreen() {
 
   const [data, setData] = useState<SantoDoDiaResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
 
   const monthIndexFromLabel = (label: string | null | undefined): number | null => {
     const monthName = monthLabelPt(label);
@@ -114,7 +114,6 @@ export default function SantoScreen() {
       setError(e?.message ?? 'Não foi possível carregar o Santo do Dia.');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -122,12 +121,34 @@ export default function SantoScreen() {
     load();
   }, [load]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    load();
-  }, [load]);
-
   const today = data?.today;
+
+  useEffect(() => {
+    if (!today?.image) {
+      setImageAspectRatio(null);
+      return;
+    }
+
+    let cancelled = false;
+    Image.getSize(
+      today.image,
+      (w, h) => {
+        if (cancelled) return;
+        if (!w || !h) {
+          setImageAspectRatio(null);
+          return;
+        }
+        setImageAspectRatio(w / h);
+      },
+      () => {
+        if (!cancelled) setImageAspectRatio(null);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [today?.image]);
 
   const renderBlocks = useCallback(
     (blocks: SantoContentBlock[] | null | undefined) => {
@@ -227,16 +248,24 @@ export default function SantoScreen() {
 
   if (error) {
     return (
-      <ScrollView
-        style={{ backgroundColor: colors.background }}
-        contentContainerStyle={[styles.centerContainer, { paddingBottom: spacing.lg + insets.bottom }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        <Text style={styles.errorEmoji}>😕</Text>
-        <Text style={[styles.errorTitle, { color: colors.text }]}>Erro ao carregar</Text>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
-        <Text style={[styles.errorHint, { color: colors.textMuted }]}>Puxe para baixo para tentar novamente.</Text>
-      </ScrollView>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="alert-circle-outline" size={64} color={colors.textSecondary} />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>
+          Erro ao carregar Santo do Dia
+        </Text>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+          {error || 'Dados não encontrados.'}
+        </Text>
+        <Pressable
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            setLoading(true);
+            load();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+        </Pressable>
+      </View>
     );
   }
 
@@ -245,7 +274,6 @@ export default function SantoScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         <Animated.View
           entering={FadeInDown.duration(400)}
@@ -270,7 +298,11 @@ export default function SantoScreen() {
           <Animated.View entering={FadeInDown.duration(350).delay(200)}>
             <Image
               source={{ uri: today.image }}
-              style={[styles.image, { borderColor: colors.border }]}
+              style={[
+                styles.image,
+                { borderColor: colors.border },
+                imageAspectRatio ? { aspectRatio: imageAspectRatio } : { height: 200 },
+              ]}
               resizeMode="cover"
             />
           </Animated.View>
@@ -372,7 +404,6 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 200,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginBottom: spacing.lg,
@@ -458,5 +489,16 @@ const styles = StyleSheet.create({
     ...typography.body,
     lineHeight: 26,
     marginBottom: spacing.xs,
+  },
+  retryButton: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    ...typography.body,
+    color: '#fff',
+    fontWeight: '600',
   },
 });

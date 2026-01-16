@@ -72,7 +72,7 @@ export const MeditationShareCard = React.forwardRef<View, MeditationShareCardPro
           <View style={styles.footer}>
             <View style={[styles.decorationBar, { backgroundColor: bookColor }]} />
             <Text style={styles.dateText}>{date}</Text>
-            <Text style={styles.appName}>App Católico</Text>
+            <Text style={styles.appName}>Sanctus</Text>
           </View>
         </LinearGradient>
       </View>
