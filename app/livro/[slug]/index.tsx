@@ -9,6 +9,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated';
+import misteriosRaw from '../../../data/Rosário/Mistérios Terço.json';
 
 export default function BookScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -325,22 +326,40 @@ export default function BookScreen() {
                     ? 'Mistérios'
                     : 'Capítulos'}
           </Text>
-          {chaptersToShow.map((chapter, index) => (
-            <Animated.View
-              key={chapter.chapter}
-              entering={FadeInDown.duration(500).delay(150 + index * 40).easing(Easing.out(Easing.ease))}
-            >
-              <ChapterCard
-                chapter={chapter}
-                bookColor={book.color}
-                hideNumberBadge={isFrasesDeSantos || isMisteriosTerco}
-                hideItemCount={isViaSacra || isMisteriosTerco}
-                itemLabelSingular={isFrasesDeSantos ? 'frase' : isMisteriosTerco ? 'mistério' : 'parágrafo'}
-                itemLabelPlural={isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos'}
-                onPress={() => router.push(`/livro/${slug}/capitulo/${chapter.chapter}`)}
-              />
-            </Animated.View>
-          ))}
+          {isMisteriosTerco ? (
+            // Mostrar apenas botões por grupo de mistérios (não listar cada mistério)
+            (misteriosRaw as any[]).map((grupo, gIndex) => {
+              const chapterIdStart = (misteriosRaw as any[]).slice(0, gIndex).reduce((acc, gg) => acc + (gg.misterios?.length || 0), 0) + 1;
+              return (
+                <Animated.View key={grupo.grupo} entering={FadeInDown.duration(400).delay(100 + gIndex * 30)}>
+                  <Pressable
+                    style={[styles.groupItem, { borderRadius: borderRadius.md, backgroundColor: colors.surface }]}
+                    onPress={() => router.push(`/livro/${slug}/capitulo/${chapterIdStart}`)}
+                  >
+                    <Text style={[styles.groupItemTitle, { color: colors.text }]}>{grupo.grupo}</Text>
+                    <Text style={[styles.groupItemSubtitle, { color: colors.textSecondary }]} numberOfLines={2}>{grupo.dias?.join(', ') ?? ''}</Text>
+                  </Pressable>
+                </Animated.View>
+              );
+            })
+          ) : (
+            chaptersToShow.map((chapter, index) => (
+              <Animated.View
+                key={chapter.chapter}
+                entering={FadeInDown.duration(500).delay(150 + index * 40).easing(Easing.out(Easing.ease))}
+              >
+                <ChapterCard
+                  chapter={chapter}
+                  bookColor={book.color}
+                  hideNumberBadge={isFrasesDeSantos || isMisteriosTerco}
+                  hideItemCount={isViaSacra || isMisteriosTerco}
+                  itemLabelSingular={isFrasesDeSantos ? 'frase' : isMisteriosTerco ? 'mistério' : 'parágrafo'}
+                  itemLabelPlural={isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos'}
+                  onPress={() => router.push(`/livro/${slug}/capitulo/${chapter.chapter}`)}
+                />
+              </Animated.View>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -444,6 +463,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   catecismoHint: {
+    ...typography.small,
+  },
+  groupTitle: {
+    ...typography.h4,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  groupItem: {
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  groupItemTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  groupItemSubtitle: {
     ...typography.small,
   },
 });

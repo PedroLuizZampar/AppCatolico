@@ -12,10 +12,12 @@ import { captureRef } from 'react-native-view-shot';
 
 import { getBookBySlug } from '@/lib/data';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { getRosarioImageSource } from '@/lib/rosario';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph } from '@/lib/types';
 import { getViaSacraImageSource } from '@/lib/viaSacra';
+import misteriosRaw from '../../../../data/Rosário/Mistérios Terço.json';
 
 // Componente memoizado para cada parágrafo
 const ParagraphItem = React.memo<{
@@ -170,6 +172,22 @@ export default function ChapterScreen() {
     if (!isViaSacra) return undefined;
     return getViaSacraImageSource(currentChapterId);
   }, [isViaSacra, currentChapterId]);
+
+  const rosarioImage = useMemo(() => {
+    if (!isMisteriosTerco) return undefined;
+    return getRosarioImageSource(currentChapterId);
+  }, [isMisteriosTerco, currentChapterId]);
+
+  const findMysteryByGlobalIndex = (index: number) => {
+    let counter = 0;
+    for (const grupo of (misteriosRaw as any[])) {
+      for (const m of grupo.misterios) {
+        if (counter === index) return { ...m, grupo: grupo.grupo };
+        counter += 1;
+      }
+    }
+    return null;
+  };
 
   const viaSacraStationLabel = useMemo(() => {
     if (!isViaSacra || !chapter?.name) return undefined;
@@ -454,6 +472,17 @@ export default function ChapterScreen() {
         }} 
       />
 
+      {/* Grupo dos Mistérios (topo) */}
+      {isMisteriosTerco && (() => {
+        const mysteryGroup = findMysteryByGlobalIndex(currentChapterId - 1)?.grupo;
+        if (!mysteryGroup) return null;
+        return (
+          <View style={[styles.mysteryGroupBanner, { backgroundColor: colors.surfaceLight, borderBottomColor: colors.border }]}>
+            <Text style={[styles.mysteryGroupText, { color: colors.primary }]}>{mysteryGroup}</Text>
+          </View>
+        );
+      })()}
+
       {/* Barra de Navegação Fixa no Topo */}
       <View
         style={[
@@ -545,13 +574,28 @@ export default function ChapterScreen() {
         data={chapter.paragraphs}
         keyExtractor={(item) => item.number.toString()}
         ListHeaderComponent={
-          isViaSacra && viaSacraImage ? (
+          (isViaSacra && viaSacraImage) || (isMisteriosTerco && rosarioImage) ? (
             <View style={styles.viaSacraHeader}>
-              <Image
-                source={viaSacraImage}
-                style={styles.viaSacraImage}
-                contentFit="contain"
-              />
+              {isMisteriosTerco ? (
+                <View style={styles.mysteryTitleHeader}>
+                  <Text style={[styles.misterioHeaderTitle, { color: colors.text }]} numberOfLines={2} ellipsizeMode="tail">
+                    {chapter?.paragraphs?.[0]?.label}
+                  </Text>
+                </View>
+              ) : null}
+              {isViaSacra ? (
+                <Image
+                  source={viaSacraImage}
+                  style={styles.viaSacraImage}
+                  contentFit="contain"
+                />
+              ) : (
+                <Image
+                  source={rosarioImage}
+                  style={styles.rosarioImage}
+                  contentFit="cover"
+                />
+              )}
             </View>
           ) : null
         }
@@ -569,16 +613,77 @@ export default function ChapterScreen() {
 
             return (
               <View style={styles.viaSacraField}>
-                {isMisterioItem ? (
-                  <>
-                    <Text style={[styles.misterioLabel, { color: colors.primary }]}>
-                      {label}
-                    </Text>
-                    <Text style={[styles.misterioText, { color: colors.text }]}>
-                      {item.text}
-                    </Text>
-                  </>
-                ) : isVersiculo || isResposta ? (
+                  {isMisterioItem ? (
+                    <>
+                      {/* Seção: Meditação */}
+                      <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={styles.mysterySectionHeader}>
+                          <Ionicons name="book-outline" size={18} color={colors.primary} />
+                          <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Meditação</Text>
+                        </View>
+                        <Text style={[styles.misterioText, { color: colors.text }]}>
+                          {item.text}
+                        </Text>
+                      </View>
+
+                      {isMisteriosTerco && (() => {
+                        const mystery = findMysteryByGlobalIndex(currentChapterId - 1);
+                        if (!mystery) return null;
+                        return (
+                          <>
+                            {/* Seção: Leitura Bíblica */}
+                            {(mystery.leitura_biblica?.referencia || mystery.leitura_biblica?.texto) ? (
+                              <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                <View style={styles.mysterySectionHeader}>
+                                  <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                                  <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Leitura Bíblica</Text>
+                                </View>
+                                {mystery.leitura_biblica?.referencia ? (
+                                  <View style={[styles.mysteryRefBadge, { backgroundColor: colors.primary + '15' }]}>
+                                    <Ionicons name="bookmark-outline" size={14} color={colors.primary} />
+                                    <Text style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
+                                  </View>
+                                ) : null}
+                                {mystery.leitura_biblica?.texto ? (
+                                  <Text style={[styles.mysteryReadingText, { color: colors.text }]}>
+                                    “{mystery.leitura_biblica.texto}”
+                                  </Text>
+                                ) : null}
+                              </View>
+                            ) : null}
+
+                            {/* Seção: Orações */}
+                            <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                              <View style={styles.mysterySectionHeader}>
+                                <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                                <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
+                              </View>
+                              {(mystery.oracoes?.pai_nosso || mystery.oracoes?.ave_marias) ? (
+                                <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                                    {mystery.oracoes?.pai_nosso ? mystery.oracoes.pai_nosso : ''}{mystery.oracoes?.ave_marias ? '  •  ' + mystery.oracoes.ave_marias : ''}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {mystery.oracoes?.gloria ? (
+                                <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.gloria}</Text>
+                                </View>
+                              ) : null}
+                              {mystery.oracoes?.jaculatoria ? (
+                                <View style={styles.mysteryPrayerRow}>
+                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.jaculatoria}</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : isVersiculo || isResposta ? (
                   <Text style={styles.viaSacraInlineLine}>
                     <Text style={[styles.viaSacraInlinePrefix, { color: colors.textMuted }]}>
                       {isVersiculo ? '℣:' : '℟:'}{' '}
@@ -651,7 +756,7 @@ export default function ChapterScreen() {
           text={selectedParagraphs.length === 1 ? chapter.paragraphs.find(p => p.number === selectedParagraphs[0])?.text || '' : ''}
           number={selectedParagraphs.length === 1 ? selectedParagraphs[0] : 0}
           chapterNumber={currentChapterId}
-          chapterName={isCatecismo || isViaSacra || isFrasesDeSantos || isMisteriosTerco ? chapter.name : `Capítulo ${currentChapterId}`}
+          chapterName={chapter.name}
           bookTitle={book.title}
           bookIcon={book.icon}
           bookAuthor={book.author}
@@ -756,11 +861,19 @@ const styles = StyleSheet.create({
     right: spacing.sm,
   },
   viaSacraHeader: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   viaSacraImage: {
     width: '100%',
-    height: 190,
+    minHeight: 200,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+  },
+  rosarioImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
   },
   viaSacraField: {
     paddingVertical: spacing.sm,
@@ -796,8 +909,109 @@ const styles = StyleSheet.create({
   },
   misterioText: {
     ...typography.body,
-    lineHeight: 26,
+    lineHeight: 28,
     fontSize: 16,
+  },
+  mysterySection: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  mysterySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  mysterySectionTitle: {
+    ...typography.small,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mysteryRefBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+    marginBottom: spacing.md,
+  },
+  mysteryRefText: {
+    ...typography.small,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  mysteryReadingText: {
+    ...typography.body,
+    lineHeight: 28,
+    fontSize: 16,
+    fontStyle: 'italic',
+  },
+  mysteryPrayerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  mysteryPrayerTextStyled: {
+    ...typography.body,
+    flex: 1,
+    fontWeight: '600',
+    lineHeight: 26,
+    fontSize: 15,
+  },
+  mysteryPrayerText: {
+    ...typography.body,
+    marginBottom: spacing.md,
+  },
+  mysteryGroupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  mysteryGroupEmoji: {
+    fontSize: 16,
+  },
+  mysteryGroupText: {
+    ...typography.small,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  groupHeaderTitle: {
+    ...typography.h4,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  mysteryTitleHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  mysteryOrderBadge: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+  },
+  mysteryOrderText: {
+    ...typography.small,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  misterioHeaderTitle: {
+    ...typography.h3,
+    fontWeight: '700',
+    fontSize: 20,
+    textAlign: 'center',
   },
   menuContainerFixed: {
     position: 'absolute',

@@ -97,15 +97,13 @@ export default function HomeScreen() {
               <View style={[styles.collectionIconContainer, { backgroundColor: colors.surfaceLight }]}>
                 <Text style={styles.collectionIcon}>📚</Text>
               </View>
-              <View style={styles.collectionContent}
-              >
+              <View style={styles.collectionContent}>
                 <Text style={[styles.collectionTitle, { color: colors.text }]}>Livros de São Josemaria</Text>
                 <Text style={[styles.collectionAuthor, { color: colors.textSecondary }]}>Caminho • Sulco • Forja</Text>
                 <Text style={[styles.collectionDescription, { color: colors.textMuted }]} numberOfLines={2}>
                   Trilogia clássica de pontos de meditação e vida cristã.
                 </Text>
-                <View style={[styles.collectionFooter, { borderTopColor: colors.divider }]}
-                >
+                <View style={[styles.collectionFooter, { borderTopColor: colors.divider }]}>
                   <Text style={[styles.collectionFooterText, { color: colors.textSecondary }]}>3 livros</Text>
                 </View>
               </View>
@@ -233,9 +231,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
   },
   collectionIconContainer: {
     width: 56,
@@ -243,6 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
   collectionIcon: {
     fontSize: 32,

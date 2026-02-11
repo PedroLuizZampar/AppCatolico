@@ -145,10 +145,11 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
   processedText = processedText.replace(/(\d+)[‘’'´`′](?=[A-Za-zÀ-ÖØ-öø-ÿ"“])/g, '$1 ');
 
   // Regex unificada para processar sequencialmente e manter estado do último versículo
-  // Grupo 1/2: Número + Letras (16mas, 17ae)
+  // Grupo 1/2: Número + Letras (captura letras Unicode, ex: à, á, ê, etc.)
   // Grupo 3: Número antes de Maiúscula/Aspas (17O)
   // Grupo 4: Número isolado (15)
-  const tokenRegex = /(\d+)([a-zçñ]+)|(\d+)(?=[A-ZÀ-Ú"“])|(\d+)/g;
+  // Uso de 'u' para suportar escapes Unicode (\p{L})
+  const tokenRegex = /(\d+)([\p{L}]+(?:-[\p{L}]+)*)|(\d+)(?=[A-ZÀ-Ú"“])|(\d+)/gu;
 
   processedText = processedText.replace(tokenRegex, (fullMatch, g1Num, g1Letters, g3Num, g4Num) => {
       // Caso 1: Número + Letras (ex: 16mas, 17ae)

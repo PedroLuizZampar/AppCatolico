@@ -508,6 +508,7 @@ export default function CapituloBibliaScreen() {
           bookAuthor="Bíblia Sagrada"
           bookColor={colors.primary}
           date={new Date().toLocaleDateString('pt-BR')}
+          hideChapterNumber
         />
       </View>
     </View>
