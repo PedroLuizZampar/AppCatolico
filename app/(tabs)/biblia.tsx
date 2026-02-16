@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HighlightedText } from '@/components/HighlightedText';
+import { biblia, todosLivros } from '@/lib/bibliaData';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography, borderRadius, shadows } from '@/lib/theme/tokens';
-import { biblia } from '@/lib/bibliaData';
+import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { LivroBiblico } from '@/lib/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const normalizeText = (value: string): string =>
+  (value ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
 export default function BibliaScreen() {
   const [selectedTestament, setSelectedTestament] = useState<'Antigo' | 'Novo'>('Antigo');
@@ -19,11 +27,46 @@ export default function BibliaScreen() {
 
   const livros = selectedTestament === 'Antigo' ? biblia.antigoTestamento : biblia.novoTestamento;
 
-  const filteredLivros = searchQuery
+  const trimmedQuery = searchQuery.trim();
+
+  const filteredLivros = trimmedQuery
     ? livros.filter(livro =>
-        livro.nome.toLowerCase().includes(searchQuery.toLowerCase())
+        normalizeText(livro.nome).includes(normalizeText(trimmedQuery))
       )
     : livros;
+
+  // Busca por conteúdo dos versículos (ambos os testamentos)
+  const matchingVerses = useMemo(() => {
+    if (!trimmedQuery || trimmedQuery.length < 2) return [];
+
+    const q = normalizeText(trimmedQuery);
+    const results: {
+      livroNome: string;
+      livroSlug: string;
+      capitulo: number;
+      versiculo: number;
+      texto: string;
+    }[] = [];
+
+    for (const livro of todosLivros) {
+      for (const cap of livro.capitulos) {
+        for (const v of cap.versiculos) {
+          if (normalizeText(v.texto).includes(q)) {
+            results.push({
+              livroNome: livro.nome,
+              livroSlug: livro.slug,
+              capitulo: cap.capitulo,
+              versiculo: v.versiculo,
+              texto: v.texto,
+            });
+            if (results.length >= 30) return results;
+          }
+        }
+      }
+    }
+
+    return results;
+  }, [trimmedQuery]);
 
   const handleLivroPress = (livro: LivroBiblico) => {
     router.push(`/biblia/${livro.slug}` as any);
@@ -56,7 +99,7 @@ export default function BibliaScreen() {
           <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Buscar livro..."
+            placeholder="Buscar livro ou versículo..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -139,6 +182,60 @@ export default function BibliaScreen() {
           </Animated.View>
         ))}
       </View>
+
+      {/* Resultados de busca por conteúdo */}
+      {matchingVerses.length > 0 && (
+        <View style={styles.verseResultsSection}>
+          <Text style={[styles.verseResultsTitle, { color: colors.text }]}>
+            Versículos encontrados
+          </Text>
+          <Text style={[styles.verseResultsCount, { color: colors.textMuted }]}>
+            {matchingVerses.length}{matchingVerses.length >= 30 ? '+' : ''} resultado{matchingVerses.length !== 1 ? 's' : ''}
+          </Text>
+          {matchingVerses.map((item, index) => (
+            <Animated.View
+              key={`${item.livroSlug}-${item.capitulo}-${item.versiculo}`}
+              entering={FadeInDown.duration(400).delay(100 + index * 30)}
+            >
+              <Pressable
+                style={({ pressed }) => [
+                  styles.verseResultItem,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/biblia/[livro]/capitulo/[id]',
+                    params: {
+                      livro: item.livroSlug,
+                      id: item.capitulo.toString(),
+                      paragraph: item.versiculo.toString(),
+                    },
+                  } as any)
+                }
+              >
+                <View style={styles.verseResultHeader}>
+                  <View style={[styles.verseResultBadge, { backgroundColor: colors.primary + '20' }]}>
+                    <Text style={[styles.verseResultBadgeText, { color: colors.primary }]}>
+                      {item.livroNome} {item.capitulo},{item.versiculo}
+                    </Text>
+                  </View>
+                </View>
+                <HighlightedText
+                  text={item.texto}
+                  highlight={trimmedQuery}
+                  style={{ ...typography.small, color: colors.textSecondary }}
+                  highlightStyle={{ color: colors.primary, fontWeight: '700' }}
+                  numberOfLines={3}
+                />
+              </Pressable>
+            </Animated.View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -202,7 +299,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   bookItemContainer: {
-    width: '48%', // Aproximadamente metade da largura menos o gap
+    width: '48%',
   },
   bookItem: {
     padding: spacing.md,
@@ -210,7 +307,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 100, // Altura fixa para uniformizar
+    height: 100,
   },
   bookName: {
     ...typography.body,
@@ -220,5 +317,37 @@ const styles = StyleSheet.create({
   },
   chapterCount: {
     ...typography.small,
+  },
+  verseResultsSection: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  verseResultsTitle: {
+    ...typography.h3,
+    marginBottom: spacing.xs,
+  },
+  verseResultsCount: {
+    ...typography.small,
+    marginBottom: spacing.md,
+  },
+  verseResultItem: {
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+  },
+  verseResultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  verseResultBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  verseResultBadgeText: {
+    ...typography.small,
+    fontWeight: '700',
   },
 });

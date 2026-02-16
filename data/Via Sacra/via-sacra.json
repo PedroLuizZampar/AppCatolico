@@ -153,7 +153,21 @@
       "contemplacao": "Contemplemos como os discípulos levam Jesus exânime ao lugar da sepultura. Triste, a Mãe os acompanha e com as próprias mãos acomoda o corpo do Filho à sepultura. Fecha-se este, enfim, e todos vão-se embora.",
       "oracao": "Ó Jesus sepultado, beijo esta pedra que vos acolheu; mas, após três dias, haveis de ressurgir! Por vossa ressurreição, fazei-me, eu vos peço, ressurgir glorioso convosco no último dia e ir para o Céu, onde, unido a vós para sempre, vos hei de louvar e amar por toda a eternidade. Amo-vos e arrependo-me de ter-vos ofendido. Não permitais que eu novamente vos ofenda. Dai-me amor perpétuo a vós e fazei de mim o que quiserdes.",
       "oracoes_tradicionais": "Pai-nosso, Ave-Maria, Glória",
-      "cantico": "No sepulcro vos deixaram,\nSepultado, vos choraram,\nMagoado o coração.\nMeu Jesus, por vossos passos,\nRecebei em vossos braços\nA mim, pobre pecador.\nOração final a Jesus crucificado. — Eis-me aqui, ó meu bom e\ndulcíssimo Jesus! Humildemente prostrado de joelhos em vossa presença,\npeço e suplico-vos, com todo o fervor de minha alma, que vos digneis\ngravar em meu coração os mais vivos sentimentos de fé, esperança e\ncaridade, de verdadeiro arrependimento de meus pecados, e um firme\npropósito de emendar-me, enquanto vou considerando, com vivo afeto e\ndor, as vossas cinco chagas, tendo presentes as palavras que já o profeta\nDavi punha em vossa boca, ó bom Jesus: “Transpassaram minhas mãos e\nos meus pés e contaram todos os meus ossos” ( Sl 21, 17).\nA Nossa Senhora das Dores. — Ó Mãe das Dores, Rainha dos mártires,\nque tanto chorastes vosso Filho, morto para me salvar, alcançai-me uma\nverdadeira contrição dos meus pecados e uma sincera mudança de vida.\nMãe, pela dor que experimentastes quando vosso divino Filho, no meio de\ntantos tormentos, inclinando a cabeça expirou à vossa vista sobre a cruz,\neu vos suplico que me alcanceis uma boa morte. Por piedade, ó advogada\ndos pecadores, não deixeis de amparar a minha alma na aflição e no\ncombate da terrível passagem desta vida à eternidade. E, como é possível\nque, neste momento, a palavra e a voz me faltem para pronunciar o vosso\nnome e o de Jesus, rogo-vos, desde já, a vós e a vosso divino Filho, que\nme socorrais nessa hora extrema, e assim direi: Jesus e Maria,\nentrego-vos a minha alma. Amém."
+      "cantico": "No sepulcro vos deixaram,\nSepultado, vos choraram,\nMagoado o coração.\nMeu Jesus, por vossos passos,\nRecebei em vossos braços\nA mim, pobre pecador.\n"
+    },
+    {
+      "index": 15,
+      "title": "Oração Final",
+      "oracoes": [
+        {
+          "titulo": "Oração a Jesus crucificado",
+          "texto": "Eis-me aqui, ó meu bom e dulcíssimo Jesus! Humildemente prostrado de joelhos em vossa presença, peço e suplico-vos, com todo o fervor de minha alma, que vos digneis gravar em meu coração os mais vivos sentimentos de fé, esperança e caridade, de verdadeiro arrependimento de meus pecados, e um firme propósito de emendar-me, enquanto vou considerando, com vivo afeto e dor, as vossas cinco chagas, tendo presentes as palavras que já o profeta Davi punha em vossa boca, ó bom Jesus: \"Transpassaram minhas mãos e os meus pés e contaram todos os meus ossos\" (Sl 21, 17)."
+        },
+        {
+          "titulo": "A Nossa Senhora das Dores",
+          "texto": "Ó Mãe das Dores, Rainha dos mártires, que tanto chorastes vosso Filho, morto para me salvar, alcançai-me uma verdadeira contrição dos meus pecados e uma sincera mudança de vida. Mãe, pela dor que experimentastes quando vosso divino Filho, no meio de tantos tormentos, inclinando a cabeça expirou à vossa vista sobre a cruz, eu vos suplico que me alcanceis uma boa morte. Por piedade, ó advogada dos pecadores, não deixeis de amparar a minha alma na aflição e no combate da terrível passagem desta vida à eternidade. E, como é possível que, neste momento, a palavra e a voz me faltem para pronunciar o vosso nome e o de Jesus, rogo-vos, desde já, a vós e a vosso divino Filho, que me socorrais nessa hora extrema, e assim direi: Jesus e Maria, entrego-vos a minha alma. Amém."
+        }
+      ]
     }
   ],
   "images": [

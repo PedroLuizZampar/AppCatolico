@@ -1,4 +1,5 @@
 import { ChapterCard } from '@/components/ChapterCard';
+import { HighlightedText } from '@/components/HighlightedText';
 import { SearchBar } from '@/components/SearchBar';
 import { findCatecismoParagraphByNumber } from '@/lib/catecismo';
 import { getBookBySlug } from '@/lib/data';
@@ -43,6 +44,34 @@ export default function BookScreen() {
     if (!book) return 0;
     return book.data.chapters.reduce((acc, ch) => acc + ch.paragraphs.length, 0);
   }, [book]);
+
+  // Busca por conteúdo dos parágrafos (texto, não numérico)
+  const matchingParagraphs = useMemo(() => {
+    if (!book) return [];
+    if (!trimmedQuery || isNumericQuery) return [];
+    if (isMisteriosTerco || isViaSacra) return [];
+
+    const q = normalizeText(trimmedQuery);
+    if (q.length < 2) return [];
+
+    const results: { chapterId: number; chapterName: string; number: number; text: string }[] = [];
+
+    for (const ch of book.data.chapters) {
+      for (const p of ch.paragraphs) {
+        if (normalizeText(p.text).includes(q)) {
+          results.push({
+            chapterId: ch.chapter,
+            chapterName: ch.name,
+            number: p.number,
+            text: p.text,
+          });
+          if (results.length >= 30) return results;
+        }
+      }
+    }
+
+    return results;
+  }, [book, trimmedQuery, isNumericQuery, isMisteriosTerco, isViaSacra]);
 
   if (!book) {
     return (
@@ -135,7 +164,7 @@ export default function BookScreen() {
             <View style={styles.statItem}>
               <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
               <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                {book.data.chapters.length} {statsLabelChapters}
+                {isViaSacra ? book.data.chapters.length - 1 : book.data.chapters.length} {statsLabelChapters}
               </Text>
             </View>
             {!isViaSacra && !isMisteriosTerco ? (
@@ -161,13 +190,11 @@ export default function BookScreen() {
                   onChangeText={setQuery}
                   placeholder={
                     isCatecismo
-                      ? 'Busque por tema ou parágrafo...'
+                      ? 'Busque por tema, conteúdo ou nº...'
                       : isFrasesDeSantos
                         ? 'Buscar santo...'
-                        : 'Busque por palavra ou número...'
+                        : 'Busque por tema, conteúdo ou nº...'
                   }
-                  keyboardType={isNumericQuery ? 'number-pad' : 'default'}
-                  inputMode={isNumericQuery ? 'numeric' : 'text'}
                   returnKeyType={(isCatecismo && isNumericCatecismoQuery) || (isJosemariaBook && isNumericJosemariaQuery) ? 'search' : 'done'}
                   onSubmitEditing={() => {
                     if (isCatecismo) {
@@ -299,7 +326,7 @@ export default function BookScreen() {
 
             {isCatecismo ? (
               <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
-                Dica: números levam ao parágrafo (destacado). Texto filtra os temas.
+                Dica: números levam ao parágrafo. Texto filtra temas e busca no conteúdo.
               </Text>
             ) : isFrasesDeSantos ? (
               <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
@@ -307,7 +334,7 @@ export default function BookScreen() {
               </Text>
             ) : (
               <Text style={[styles.catecismoHint, { color: colors.textMuted }]}>
-                Dica: números levam ao ponto (destacado). Texto filtra os temas.
+                Dica: números levam ao ponto. Texto filtra temas e busca no conteúdo.
               </Text>
             )}
           </View>
@@ -336,8 +363,11 @@ export default function BookScreen() {
                     style={[styles.groupItem, { borderRadius: borderRadius.md, backgroundColor: colors.surface }]}
                     onPress={() => router.push(`/livro/${slug}/capitulo/${chapterIdStart}`)}
                   >
-                    <Text style={[styles.groupItemTitle, { color: colors.text }]}>{grupo.grupo}</Text>
-                    <Text style={[styles.groupItemSubtitle, { color: colors.textSecondary }]} numberOfLines={2}>{grupo.dias?.join(', ') ?? ''}</Text>
+                    <View style={styles.groupItemContent}>
+                      <Text style={[styles.groupItemTitle, { color: colors.text }]}>{grupo.grupo}</Text>
+                      <Text style={[styles.groupItemSubtitle, { color: colors.textSecondary }]} numberOfLines={2}>{grupo.dias?.join(', ') ?? ''}</Text>
+                    </View>
+                    <Text style={[styles.groupItemArrow, { color: colors.textMuted }]}>→</Text>
                   </Pressable>
                 </Animated.View>
               );
@@ -359,6 +389,59 @@ export default function BookScreen() {
                 />
               </Animated.View>
             ))
+          )}
+
+          {/* Resultados de busca por conteúdo */}
+          {matchingParagraphs.length > 0 && (
+            <View style={styles.contentResultsSection}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {isFrasesDeSantos ? 'Frases encontradas' : 'Parágrafos encontrados'}
+              </Text>
+              <Text style={[styles.contentResultsCount, { color: colors.textMuted }]}>
+                {matchingParagraphs.length}{matchingParagraphs.length >= 30 ? '+' : ''} resultado{matchingParagraphs.length !== 1 ? 's' : ''}
+              </Text>
+              {matchingParagraphs.map((item, index) => (
+                <Animated.View
+                  key={`${item.chapterId}-${item.number}`}
+                  entering={FadeInDown.duration(400).delay(100 + index * 30)}
+                >
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.contentResultItem,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/livro/[slug]/capitulo/[id]',
+                        params: { slug, id: item.chapterId.toString(), paragraph: item.number.toString() },
+                      })
+                    }
+                  >
+                    <View style={styles.contentResultHeader}>
+                      <View style={[styles.contentResultBadge, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={[styles.contentResultBadgeText, { color: colors.primary }]}>
+                          {isFrasesDeSantos ? '' : `§ ${item.number}`}
+                        </Text>
+                      </View>
+                      <Text style={[styles.contentResultChapter, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {item.chapterName}
+                      </Text>
+                    </View>
+                    <HighlightedText
+                      text={item.text}
+                      highlight={trimmedQuery}
+                      style={{ ...typography.small, color: colors.textSecondary }}
+                      highlightStyle={{ color: colors.primary, fontWeight: '700' }}
+                      numberOfLines={3}
+                    />
+                  </Pressable>
+                </Animated.View>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -471,8 +554,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   groupItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: spacing.md,
     marginBottom: spacing.sm,
+  },
+  groupItemContent: {
+    flex: 1,
   },
   groupItemTitle: {
     ...typography.body,
@@ -481,5 +569,42 @@ const styles = StyleSheet.create({
   },
   groupItemSubtitle: {
     ...typography.small,
+  },
+  groupItemArrow: {
+    fontSize: 18,
+    marginLeft: spacing.sm,
+  },
+  contentResultsSection: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  contentResultsCount: {
+    ...typography.small,
+    marginBottom: spacing.md,
+  },
+  contentResultItem: {
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+  },
+  contentResultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  contentResultBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  contentResultBadgeText: {
+    ...typography.small,
+    fontWeight: '700',
+  },
+  contentResultChapter: {
+    ...typography.small,
+    flex: 1,
   },
 });

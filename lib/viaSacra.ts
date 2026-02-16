@@ -6,7 +6,7 @@ import viaSacraRaw from '../data/Via Sacra/via-sacra.json';
 
 type ViaSacraStation = {
   index: number;
-  estacao: string;
+  estacao?: string;
   title: string;
   versiculo?: string;
   resposta?: string;
@@ -14,6 +14,7 @@ type ViaSacraStation = {
   oracao?: string;
   oracoes_tradicionais?: string;
   cantico?: string;
+  oracoes?: { titulo: string; texto: string }[];
 };
 
 type ViaSacraRaw = {
@@ -48,16 +49,31 @@ const makeField = (number: number, label: string, text?: string): Paragraph | nu
 };
 
 const stationToChapter = (station: ViaSacraStation): Chapter => {
+  // Estação com array de orações (ex: Oração Final)
+  if (station.oracoes && station.oracoes.length > 0) {
+    const fields: Paragraph[] = station.oracoes.map((o, i) => ({
+      number: i + 1,
+      label: o.titulo,
+      text: o.texto,
+    }));
+
+    return {
+      chapter: station.index,
+      name: station.title,
+      paragraphs: fields,
+    };
+  }
+
+  // Estação normal (14 estações)
   const fields = [
     makeField(1, 'Versículo', station.versiculo),
     makeField(2, 'Resposta', station.resposta),
     makeField(3, 'Contemplação', station.contemplacao),
-    makeField(4, 'Oração', station.oracao),
-    makeField(5, 'Orações tradicionais', station.oracoes_tradicionais),
-    makeField(6, 'Cântico', station.cantico),
+    makeField(4, 'Orações', station.oracao),
+    makeField(5, 'Cântico', station.cantico),
   ].filter((p): p is Paragraph => Boolean(p));
 
-  const name = `${station.estacao} — ${station.title}`;
+  const name = station.estacao ? `${station.estacao} — ${station.title}` : station.title;
 
   return {
     chapter: station.index,
@@ -88,4 +104,8 @@ export const viaSacraBook: Book = {
 
 export const getViaSacraImageSource = (stationIndex: number): ImageSourcePropType | undefined => {
   return VIA_SACRA_IMAGE_SOURCES[stationIndex];
+};
+
+export const getViaSacraStation = (stationIndex: number): ViaSacraStation | undefined => {
+  return (VIA_SACRA.stations ?? []).find(s => s.index === stationIndex);
 };

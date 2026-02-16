@@ -16,7 +16,7 @@ import { getRosarioImageSource } from '@/lib/rosario';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph } from '@/lib/types';
-import { getViaSacraImageSource } from '@/lib/viaSacra';
+import { getViaSacraImageSource, getViaSacraStation } from '@/lib/viaSacra';
 import misteriosRaw from '../../../../data/Rosário/Mistérios Terço.json';
 
 // Componente memoizado para cada parágrafo
@@ -606,7 +606,9 @@ export default function ChapterScreen() {
             // Para Via Sacra
             const isVersiculo = isViaSacra && label === 'Versículo';
             const isResposta = isViaSacra && label === 'Resposta';
-            const isOracoesTradicionais = isViaSacra && label === 'Orações tradicionais';
+            const isContemplacao = isViaSacra && label === 'Contemplação';
+            const isOracoes = isViaSacra && label === 'Orações';
+            const isCantico = isViaSacra && label === 'Cântico';
             
             // Para Mistérios do Terço: sempre mostrar label + texto
             const isMisterioItem = isMisteriosTerco && label;
@@ -683,32 +685,83 @@ export default function ChapterScreen() {
                         );
                       })()}
                     </>
-                  ) : isVersiculo || isResposta ? (
-                  <Text style={styles.viaSacraInlineLine}>
-                    <Text style={[styles.viaSacraInlinePrefix, { color: colors.textMuted }]}>
-                      {isVersiculo ? '℣:' : '℟:'}{' '}
-                    </Text>
-                    <Text style={[styles.viaSacraInlineText, { color: viaSacraHeadingColor }]}>
-                      {item.text}
-                    </Text>
-                  </Text>
-                ) : isOracoesTradicionais ? (
-                  <Text style={[styles.viaSacraTraditionText, { color: colors.text }]}>
-                    {item.text}
-                  </Text>
-                ) : (
-                  <>
-                    {label ? (
-                      <Text style={[styles.viaSacraFieldLabel, { color: viaSacraHeadingColor }]}>
-                        {label}
+                  ) : isVersiculo ? (
+                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                        <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℣</Text>
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Versículo</Text>
+                      </View>
+                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                        {item.text}
                       </Text>
-                    ) : null}
-
-                    <Text style={[styles.viaSacraFieldText, { color: colors.text }]}>
-                      {item.text}
-                    </Text>
-                  </>
-                )}
+                    </View>
+                  ) : isResposta ? (
+                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                        <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℟</Text>
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Resposta</Text>
+                      </View>
+                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  ) : isContemplacao ? (
+                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                        <Ionicons name="book-outline" size={18} color={colors.primary} />
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Contemplação</Text>
+                      </View>
+                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  ) : isOracoes ? (() => {
+                    const station = getViaSacraStation(currentChapterId);
+                    return (
+                      <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                          <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                          <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
+                        </View>
+                        {item.text ? (
+                          <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                            <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                            <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                              {item.text}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {station?.oracoes_tradicionais ? (
+                          <View style={styles.mysteryPrayerRow}>
+                            <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                            <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                              {station.oracoes_tradicionais}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })() : isCantico ? (
+                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                        <Ionicons name="musical-notes-outline" size={18} color={colors.primary} />
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Cântico</Text>
+                      </View>
+                      <Text style={[styles.viaSacraCanticoText, { color: colors.text }]}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                        <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>{label}</Text>
+                      </View>
+                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  )}
               </View>
             );
           }
@@ -876,8 +929,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   viaSacraField: {
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.lg,
+    paddingVertical: 0,
+    marginBottom: 0,
   },
   viaSacraFieldLabel: {
     ...typography.h4,
@@ -1055,5 +1108,33 @@ const styles = StyleSheet.create({
     ...typography.small,
     fontWeight: '600',
     fontSize: 12,
+  },
+  viaSacraCardText: {
+    ...typography.body,
+    lineHeight: 28,
+    fontSize: 16,
+  },
+  viaSacraResponsePrefix: {
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  viaSacraCanticoText: {
+    ...typography.body,
+    lineHeight: 26,
+    fontSize: 16,
+    fontStyle: 'italic',
+  },
+  viaSacraMysterySection: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  viaSacraSectionHeader: {
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  viaSacraSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
   },
 });

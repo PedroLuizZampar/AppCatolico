@@ -37,7 +37,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onPress }) => {
         </Text>
         <View style={[styles.footer, { borderTopColor: colors.divider }]}>
           <Text style={[styles.chapterCount, { color: colors.textSecondary }]}>
-            {book.data.chapters.length}{' '}
+            {book.slug === 'via-sacra' ? book.data.chapters.length - 1 : book.data.chapters.length}{' '}
             {book.slug === 'frases-de-santos'
               ? 'santos'
               : book.slug === 'via-sacra'
