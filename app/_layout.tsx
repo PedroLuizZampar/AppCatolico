@@ -1,6 +1,5 @@
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { getColors } from '@/lib/theme/tokens';
-import { syncWidgetData } from '@/lib/widgetBridge';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,8 +14,6 @@ function RootLayoutNav() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    // Sincroniza dados para o widget Android
-    syncWidgetData().catch(() => {});
   }, []);
 
   return (
