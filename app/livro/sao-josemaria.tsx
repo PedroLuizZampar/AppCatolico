@@ -1,7 +1,7 @@
 import { BookCard } from '@/components/BookCard';
 import { BOOKS } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { getColors, spacing, typography } from '@/lib/theme/tokens';
+import { getColors, spacing } from '@/lib/theme/tokens';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -46,16 +46,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-  },
-  header: {
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.h2,
-    marginBottom: 4,
-  },
-  subtitle: {
-    ...typography.body,
   },
   booksSection: {
     gap: spacing.md,

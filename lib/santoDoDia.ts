@@ -4,6 +4,7 @@ export type SantoDoDiaToday = {
   year: string | null;
   title: string | null;
   image: string | null;
+  image_caption: string | null;
   content_blocks: SantoContentBlock[] | null;
   full_text: string | null;
   outros_santos: string[] | null;
@@ -243,28 +244,58 @@ const pushIfText = (
 };
 
 const findOtherSaintsSectionIndex = (entryHtml: string): number => {
-  const re = /<(h2|h3|h4)[^>]*>([\s\S]*?)<\/\1>/gi;
+  const re = /<(h2|h3|h4|p|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(entryHtml)) !== null) {
-    const headingText = normalizeSearchKey(stripTags(m[2] || ''));
-    if (headingText.includes('outros santos') || headingText.includes('outros santos e beatos')) {
+    if (isOutrosSantosText(stripTags(m[2] || ''))) {
       return m.index;
     }
   }
   return -1;
 };
 
+const findFooterSectionIndex = (entryHtml: string): number => {
+  const re = /<(h2|h3|h4|p|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(entryHtml)) !== null) {
+    if (isFooterText(stripTags(m[2] || ''))) {
+      return m.index;
+    }
+  }
+  return -1;
+};
+
+const isOutrosSantosText = (text: string): boolean => {
+  const n = normalizeSearchKey(text);
+  return n.includes('outros') && (n.includes('santos') || n.includes('beatos'));
+};
+
+const isFooterText = (text: string): boolean => {
+  const n = normalizeSearchKey(text).trim();
+  return n === 'fontes:' || n === 'fontes';
+};
+
 const extractContentBlocks = (entryHtml: string): SantoContentBlock[] | null => {
   const blocks: SantoContentBlock[] = [];
 
   const otherIdx = findOtherSaintsSectionIndex(entryHtml);
-  const html = otherIdx >= 0 ? entryHtml.slice(0, otherIdx) : entryHtml;
+  const footerIdx = findFooterSectionIndex(entryHtml);
+  const endIdx =
+    otherIdx >= 0 && footerIdx >= 0
+      ? Math.min(otherIdx, footerIdx)
+      : otherIdx >= 0
+        ? otherIdx
+        : footerIdx;
+  const html = endIdx >= 0 ? entryHtml.slice(0, endIdx) : entryHtml;
 
   const elementRe = /<(p|h2|h3|h4|blockquote|ul|ol|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = elementRe.exec(html)) !== null) {
     const tag = (m[1] || '').toLowerCase();
     const inner = m[2] || '';
+
+    const plainText = stripTags(inner).trim();
+    if (isOutrosSantosText(plainText) || isFooterText(plainText)) break;
 
     if (tag === 'ul' || tag === 'ol') {
       const items = extractAll(/<li[^>]*>([\s\S]*?)<\/li>/gi, inner)
@@ -326,14 +357,19 @@ const extractContentBlocks = (entryHtml: string): SantoContentBlock[] | null => 
 
 const extractOtherSaints = (entryHtml: string): string[] | null => {
   const otherIdx = findOtherSaintsSectionIndex(entryHtml);
+  const footerIdx = findFooterSectionIndex(entryHtml);
 
   const candidates: string[] = [];
 
   if (otherIdx >= 0) {
-    const otherSlice = entryHtml.slice(otherIdx);
+    // Limita o slice entre "Outros Santos" e "Fontes:" para não capturar lista de fontes
+    const otherSlice =
+      footerIdx >= 0 && footerIdx > otherIdx
+        ? entryHtml.slice(otherIdx, footerIdx)
+        : entryHtml.slice(otherIdx);
     const ulOuter =
-      extractBalancedOuterHtmlFrom(otherSlice, 'ul', 0) ??
-      extractBalancedOuterHtmlFrom(otherSlice, 'ol', 0);
+      extractBalancedOuterHtmlFrom(otherSlice, 'ol', 0) ??
+      extractBalancedOuterHtmlFrom(otherSlice, 'ul', 0);
 
     if (ulOuter) {
       const items = extractAll(/<li[^>]*>([\s\S]*?)<\/li>/gi, ulOuter)
@@ -369,6 +405,34 @@ const extractOtherSaints = (entryHtml: string): string[] | null => {
   return candidates.length > 0 ? candidates : null;
 };
 
+const extractImageCaption = (entryHtml: string, imageUrl: string | null): string | null => {
+  if (!imageUrl) return null;
+
+  const imgIdx = entryHtml.indexOf(imageUrl);
+  if (imgIdx < 0) return null;
+
+  // Encontra o fim do </p> que contém a imagem
+  const pCloseIdx = entryHtml.indexOf('</p>', imgIdx);
+  if (pCloseIdx < 0) return null;
+
+  const after = entryHtml.slice(pCloseIdx + 4, pCloseIdx + 1004);
+
+  // Próximo <p> que contenha <span> (possivelmente envolvido em <i> ou <em>)
+  const nextP = /^\s*<p[^>]*>([\s\S]*?)<\/p>/i.exec(after);
+  if (!nextP) return null;
+
+  const inner = nextP[1] || '';
+  if (!/<span\b/i.test(inner)) return null;
+
+  // Não deve começar com <strong> (seria título de conteúdo)
+  if (/^\s*<strong\b/i.test(inner)) return null;
+
+  const text = stripTags(inner).trim();
+  if (!text || text.length > 200) return null;
+
+  return text;
+};
+
 export async function fetchSantoDoDia(url: string = DEFAULT_URL): Promise<SantoDoDiaResponse> {
   const response = await fetch(url, {
     headers: {
@@ -399,8 +463,18 @@ export async function fetchSantoDoDia(url: string = DEFAULT_URL): Promise<SantoD
     extractElementInnerHtml(html, /<([a-z0-9]+)[^>]*class=["'][^"']*entry-content[^"']*["'][^>]*>/i) ?? '';
 
   const image = entryInner ? chooseBestImage(entryInner) : null;
-  const content_blocks = entryInner ? extractContentBlocks(entryInner) : null;
+  const image_caption = entryInner ? extractImageCaption(entryInner, image) : null;
+  let content_blocks = entryInner ? extractContentBlocks(entryInner) : null;
   const full_text = entryInner ? extractTextBlocks(entryInner) : null;
+
+  // Remove texto da legenda da imagem dos blocos de conteúdo para evitar duplicação
+  if (image_caption && content_blocks) {
+    const captionNorm = normalizeSearchKey(image_caption);
+    content_blocks = content_blocks.filter(
+      b => !('text' in b && normalizeSearchKey(b.text) === captionNorm)
+    );
+    if (content_blocks.length === 0) content_blocks = null;
+  }
 
   // Lista de outros santos (não depende do primeiro <ul> do conteúdo)
   const outros_santos = entryInner ? extractOtherSaints(entryInner) : null;
@@ -415,6 +489,7 @@ export async function fetchSantoDoDia(url: string = DEFAULT_URL): Promise<SantoD
       year,
       title,
       image,
+      image_caption,
       content_blocks,
       full_text,
       outros_santos,

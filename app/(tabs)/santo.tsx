@@ -1,58 +1,20 @@
 import { fetchSantoDoDia, SantoContentBlock, SantoDoDiaResponse } from '@/lib/santoDoDia';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { capitalizeWordsExceptDe, formatDatePT, monthIndexFromLabel, monthLabelPt } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const monthLabelPt = (month: string | null | undefined): string | null => {
-  if (!month) return null;
-  const m = month
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .slice(0, 3);
-
-  switch (m) {
-    case 'JAN':
-      return 'janeiro';
-    case 'FEV':
-      return 'fevereiro';
-    case 'MAR':
-      return 'março';
-    case 'ABR':
-      return 'abril';
-    case 'MAI':
-      return 'maio';
-    case 'JUN':
-      return 'junho';
-    case 'JUL':
-      return 'julho';
-    case 'AGO':
-      return 'agosto';
-    case 'SET':
-      return 'setembro';
-    case 'OUT':
-      return 'outubro';
-    case 'NOV':
-      return 'novembro';
-    case 'DEZ':
-      return 'dezembro';
-    default:
-      return month.trim();
-  }
-};
 
 export default function SantoScreen() {
   const { isDark } = useTheme();
@@ -63,47 +25,6 @@ export default function SantoScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
-
-  const monthIndexFromLabel = (label: string | null | undefined): number | null => {
-    const monthName = monthLabelPt(label);
-    if (!monthName) return null;
-    const idx = [
-      'janeiro',
-      'fevereiro',
-      'março',
-      'abril',
-      'maio',
-      'junho',
-      'julho',
-      'agosto',
-      'setembro',
-      'outubro',
-      'novembro',
-      'dezembro',
-    ].indexOf(monthName);
-    return idx >= 0 ? idx : null;
-  };
-
-  const capitalizeWordsExceptDe = (value: string): string => {
-    const parts = value.split(' ');
-    return parts
-      .map(part => {
-        if (!part) return part;
-
-        const m = /^([^\p{L}]*)((?:[\p{L}]+(?:-[\p{L}]+)*)+)([^\p{L}]*)$/u.exec(part);
-        if (!m) return part;
-
-        const leading = m[1] ?? '';
-        const core = m[2] ?? '';
-        const trailing = m[3] ?? '';
-
-        if (core.toLowerCase() === 'de') return `${leading}de${trailing}`;
-
-        const hyphenParts = core.split('-').map(p => (p ? p[0].toUpperCase() + p.slice(1) : p));
-        return `${leading}${hyphenParts.join('-')}${trailing}`;
-      })
-      .join(' ');
-  };
 
   const load = useCallback(async () => {
     try {
@@ -220,19 +141,14 @@ export default function SantoScreen() {
     return [d, today.month, y].filter(Boolean).join(' ');
   }, [today]);
 
-  const formatDatePT = (d: string | null, m: string | null, y: string | null): string => {
+  const formatSantoDatePT = (d: string | null, m: string | null, y: string | null): string => {
     if (!d || !m || !y) return '';
     const dayNum = parseInt(d, 10);
     const yearNum = parseInt(y, 10);
     const monthIdx = monthIndexFromLabel(m);
     if (isNaN(dayNum) || isNaN(yearNum) || monthIdx == null) return '';
     const dateObj = new Date(yearNum, monthIdx, dayNum);
-    return dateObj.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatDatePT(dateObj);
   };
 
   if (loading) {
@@ -280,14 +196,14 @@ export default function SantoScreen() {
           style={[styles.headerCard, shadows.md, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
           <View style={styles.headerTextContainer}>
-            <Text style={[styles.mainTitle, { color: colors.text }]} numberOfLines={2}>
+            <Text style={[styles.mainTitle, { color: colors.text }]}>
               {today?.title || 'Santo do Dia'}
             </Text>
             <View style={styles.dateButton}>
               <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
               <Text style={[styles.dateText, { color: colors.textSecondary }]}>
                 {capitalizeWordsExceptDe(
-                  formatDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel
+                  formatSantoDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel
                 )}
               </Text>
             </View>
@@ -302,9 +218,15 @@ export default function SantoScreen() {
                 styles.image,
                 { borderColor: colors.border },
                 imageAspectRatio ? { aspectRatio: imageAspectRatio } : { height: 200 },
+                today?.image_caption ? { marginBottom: spacing.xs } : undefined,
               ]}
               resizeMode="cover"
             />
+            {today?.image_caption ? (
+              <Text style={[styles.imageCaption, { color: colors.textMuted }]}>
+                {today.image_caption}
+              </Text>
+            ) : null}
           </Animated.View>
         ) : null}
 
@@ -358,10 +280,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     marginTop: spacing.md,
   },
-  errorEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
   errorTitle: {
     ...typography.h2,
     marginBottom: spacing.sm,
@@ -369,10 +287,6 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.body,
     textAlign: 'center',
-  },
-  errorHint: {
-    ...typography.small,
-    marginTop: spacing.md,
   },
   headerCard: {
     borderRadius: borderRadius.lg,
@@ -408,6 +322,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.lg,
   },
+  imageCaption: {
+    ...typography.small,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
   textCard: {
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
@@ -417,6 +337,7 @@ const styles = StyleSheet.create({
   bodyText: {
     ...typography.body,
     lineHeight: 24,
+    textAlign: 'justify',
   },
   blocksContainer: {
     gap: spacing.md,
@@ -441,6 +362,7 @@ const styles = StyleSheet.create({
   blockP: {
     ...typography.body,
     lineHeight: 26,
+    textAlign: 'justify',
   },
   blockQuote: {
     borderLeftWidth: 4,
@@ -454,6 +376,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontStyle: 'italic',
     lineHeight: 26,
+    textAlign: 'justify',
   },
   blockList: {
     gap: spacing.sm,
@@ -473,6 +396,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     flex: 1,
     lineHeight: 26,
+    textAlign: 'justify',
   },
   otherCard: {
     borderRadius: borderRadius.lg,
@@ -489,6 +413,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     lineHeight: 26,
     marginBottom: spacing.xs,
+    textAlign: 'justify',
   },
   retryButton: {
     marginTop: spacing.lg,

@@ -38,7 +38,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "./plugins/withMeditationWidget"
     ],
     "experiments": {
       "typedRoutes": true,

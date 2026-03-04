@@ -3,19 +3,13 @@ import { biblia, todosLivros } from '@/lib/bibliaData';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { LivroBiblico } from '@/lib/types';
+import { normalizeText } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const normalizeText = (value: string): string =>
-  (value ?? '')
-    .toString()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
 
 export default function BibliaScreen() {
   const [selectedTestament, setSelectedTestament] = useState<'Antigo' | 'Novo'>('Antigo');

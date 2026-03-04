@@ -1,5 +1,6 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { capitalizeWordsExceptDe, formatDatePT } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -42,39 +43,6 @@ interface LiturgyData {
 
 // --- API ---
 const API_URL = 'https://liturgia.up.railway.app/v2/';
-
-// Função helper para formatar data em português
-const formatDatePT = (date: Date): string => {
-  return date.toLocaleDateString('pt-BR', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-};
-
-// Mesma regra do "Santo do Dia": capitaliza palavras, mantendo "de" minúsculo
-const capitalizeWordsExceptDe = (value: string): string => {
-  const parts = value.split(' ');
-  return parts
-    .map(part => {
-      if (!part) return part;
-
-      const m = /^([^\p{L}]*)((?:[\p{L}]+(?:-[\p{L}]+)*)+)([^\p{L}]*)$/u.exec(part);
-      if (!m) return part;
-
-      const leading = m[1] ?? '';
-      const core = m[2] ?? '';
-      const trailing = m[3] ?? '';
-
-      if (core.toLowerCase() === 'de') return `${leading}de${trailing}`;
-
-      const hyphenParts = core.split('-').map(p => (p ? p[0].toUpperCase() + p.slice(1) : p));
-      return `${leading}${hyphenParts.join('-')}${trailing}`;
-    })
-    .join(' ');
-};
-
 
 // --- Mapeamento de Cores ---
 const liturgicalColorMap: { [key: string]: string } = {
@@ -255,6 +223,31 @@ const ReadingPage: React.FC<ReadingPageProps> = ({ title, data, isDark }) => {
 
   const isGospel = title.toLowerCase().includes('evangelho');
 
+  // Normaliza e limpa o titulo para comparação
+  const tituloClean = (data.titulo || '').replace(/✠/g, '').trim();
+
+  // Remove o título duplicado do início do texto caso a API o inclua
+  const cleanedTexto = (() => {
+    let t = (data.texto || '').trim();
+    if (!tituloClean || !t) return t;
+
+    // Normaliza para comparação (sem acentos, lowercase)
+    const normalizeForCompare = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+    const normTitulo = normalizeForCompare(tituloClean);
+    const normTexto = normalizeForCompare(t);
+
+    if (normTexto.startsWith(normTitulo)) {
+      // Remove o título que está prefixado no texto
+      t = t.slice(tituloClean.length).trim();
+      // Remove possível separador residual
+      t = t.replace(/^[\s—–\-:]+/, '').trim();
+    }
+
+    return t;
+  })();
+
   return (
     <View style={styles.pageContainer}>
       <ScrollView 
@@ -268,9 +261,9 @@ const ReadingPage: React.FC<ReadingPageProps> = ({ title, data, isDark }) => {
           {data.referencia}
         </Text>
         <Text style={[styles.readingSubtitle, { color: colors.textSecondary }]}>
-          {data.titulo.replace(/✠/g, '').trim()}
+          {tituloClean}
         </Text>
-        {renderTextWithSuperscript(data.texto, colors.text, data.referencia)}
+        {renderTextWithSuperscript(cleanedTexto, colors.text, data.referencia)}
 
         {isGospel ? (
           <>
@@ -693,7 +686,7 @@ export default function LiturgiaScreen() {
         ]}
       >
         <View style={styles.headerTextContainer}>
-          <Text style={[styles.mainTitle, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[styles.mainTitle, { color: colors.text }]}>
             {liturgy.liturgia}
           </Text>
           <Pressable 
@@ -706,8 +699,6 @@ export default function LiturgiaScreen() {
             <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
             <Text
               style={[styles.dateText, { color: colors.textSecondary }]}
-              numberOfLines={2}
-              ellipsizeMode="tail"
             >
               {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
             </Text>
@@ -801,10 +792,6 @@ const styles = StyleSheet.create({
   loadingText: {
     ...typography.body,
     marginTop: spacing.md,
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
   },
   errorTitle: {
     ...typography.h2,
@@ -917,14 +904,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  superscriptSpace: {
-    fontSize: 6,
-  },
-  readingFooter: {
-    ...typography.body,
-    fontWeight: 'bold',
-    marginTop: spacing.lg,
-  },
   readingResponse: {
     ...typography.body,
     fontStyle: 'italic',
@@ -935,12 +914,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontStyle: 'italic',
     marginVertical: spacing.md,
-  },
-  gospelAcclamation: {
-    ...typography.body,
-    fontWeight: 'bold',
-    marginBottom: spacing.md,
-    textAlign: 'center',
   },
   // Estilos do Calendário
   modalOverlay: {

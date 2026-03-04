@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { getColors } from '@/lib/theme/tokens';
+import { syncWidgetData } from '@/lib/widgetBridge';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,6 +15,8 @@ function RootLayoutNav() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
+    // Sincroniza dados para o widget Android
+    syncWidgetData().catch(() => {});
   }, []);
 
   return (

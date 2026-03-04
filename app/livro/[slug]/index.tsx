@@ -5,6 +5,7 @@ import { findCatecismoParagraphByNumber } from '@/lib/catecismo';
 import { getBookBySlug } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
+import { normalizeText } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -31,14 +32,6 @@ export default function BookScreen() {
   const isNumericQuery = /^\d+$/.test(trimmedQuery);
   const isNumericCatecismoQuery = isCatecismo && isNumericQuery;
   const isNumericJosemariaQuery = isJosemariaBook && isNumericQuery;
-
-  const normalizeText = (value: string): string => {
-    return (value ?? '')
-      .toString()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-  };
 
   const totalParagraphs = useMemo(() => {
     if (!book) return 0;
@@ -133,6 +126,62 @@ export default function BookScreen() {
           : 'capítulos';
   const statsLabelParagraphs = isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos';
 
+  const navigateToCatecismoParagraph = () => {
+    if (!isNumericCatecismoQuery) return;
+
+    const n = parseInt(trimmedQuery, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
+      return;
+    }
+
+    const { text, chapterId } = findCatecismoParagraphByNumber(n);
+    if (!text) {
+      Alert.alert('Não encontrado', `O parágrafo ${n} não foi encontrado no Catecismo completo.`);
+      return;
+    }
+
+    if (!chapterId) {
+      Alert.alert(
+        'Encontrado, mas sem grupo',
+        `O parágrafo ${n} existe, mas não foi localizado em nenhum grupo do Catecismo Agrupado.`
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/livro/[slug]/capitulo/[id]',
+      params: { slug: 'catecismo', id: chapterId.toString(), paragraph: n.toString() },
+    });
+  };
+
+  const navigateToJosemariaParagraph = () => {
+    if (!isNumericJosemariaQuery) return;
+
+    const n = parseInt(trimmedQuery, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      Alert.alert('Número inválido', 'Digite um número de ponto válido.');
+      return;
+    }
+
+    const text = findParagraphTextInBook(n);
+    if (!text) {
+      Alert.alert('Não encontrado', `O ponto ${n} não foi encontrado neste livro.`);
+      return;
+    }
+
+    const chapterId = findChapterIdForParagraphInBook(n);
+    if (!chapterId) {
+      Alert.alert('Não encontrado', `O ponto ${n} não foi localizado em nenhum capítulo.`);
+      return;
+    }
+
+    router.push({
+      pathname: '/livro/[slug]/capitulo/[id]',
+      params: { slug, id: chapterId.toString(), paragraph: n.toString() },
+    });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -198,60 +247,11 @@ export default function BookScreen() {
                   returnKeyType={(isCatecismo && isNumericCatecismoQuery) || (isJosemariaBook && isNumericJosemariaQuery) ? 'search' : 'done'}
                   onSubmitEditing={() => {
                     if (isCatecismo) {
-                      if (!isNumericCatecismoQuery) return;
-
-                      const n = parseInt(trimmedQuery, 10);
-                      if (!Number.isFinite(n) || n <= 0) {
-                        Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
-                        return;
-                      }
-
-                      const { text, chapterId } = findCatecismoParagraphByNumber(n);
-                      if (!text) {
-                        Alert.alert('Não encontrado', `O parágrafo ${n} não foi encontrado no Catecismo completo.`);
-                        return;
-                      }
-
-                      if (!chapterId) {
-                        Alert.alert(
-                          'Encontrado, mas sem grupo',
-                          `O parágrafo ${n} existe, mas não foi localizado em nenhum grupo do Catecismo Agrupado.`
-                        );
-                        return;
-                      }
-
-                      router.push({
-                        pathname: '/livro/[slug]/capitulo/[id]',
-                        params: { slug: 'catecismo', id: chapterId.toString(), paragraph: n.toString() },
-                      });
+                      navigateToCatecismoParagraph();
                       return;
                     }
-
                     if (isJosemariaBook) {
-                      if (!isNumericJosemariaQuery) return;
-
-                      const n = parseInt(trimmedQuery, 10);
-                      if (!Number.isFinite(n) || n <= 0) {
-                        Alert.alert('Número inválido', 'Digite um número de ponto válido.');
-                        return;
-                      }
-
-                      const text = findParagraphTextInBook(n);
-                      if (!text) {
-                        Alert.alert('Não encontrado', `O ponto ${n} não foi encontrado neste livro.`);
-                        return;
-                      }
-
-                      const chapterId = findChapterIdForParagraphInBook(n);
-                      if (!chapterId) {
-                        Alert.alert('Não encontrado', `O ponto ${n} não foi localizado em nenhum capítulo.`);
-                        return;
-                      }
-
-                      router.push({
-                        pathname: '/livro/[slug]/capitulo/[id]',
-                        params: { slug, id: chapterId.toString(), paragraph: n.toString() },
-                      });
+                      navigateToJosemariaParagraph();
                     }
                   }}
                 />
@@ -260,32 +260,7 @@ export default function BookScreen() {
               {isCatecismo && isNumericCatecismoQuery ? (
                 <Pressable
                   style={[styles.goButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    const n = parseInt(trimmedQuery, 10);
-                    if (!Number.isFinite(n) || n <= 0) {
-                      Alert.alert('Número inválido', 'Digite um número de parágrafo válido.');
-                      return;
-                    }
-
-                    const { text, chapterId } = findCatecismoParagraphByNumber(n);
-                    if (!text) {
-                      Alert.alert('Não encontrado', `O parágrafo ${n} não foi encontrado no Catecismo completo.`);
-                      return;
-                    }
-
-                    if (!chapterId) {
-                      Alert.alert(
-                        'Encontrado, mas sem grupo',
-                        `O parágrafo ${n} existe, mas não foi localizado em nenhum grupo do Catecismo Agrupado.`
-                      );
-                      return;
-                    }
-
-                    router.push({
-                      pathname: '/livro/[slug]/capitulo/[id]',
-                      params: { slug: 'catecismo', id: chapterId.toString(), paragraph: n.toString() },
-                    });
-                  }}
+                  onPress={navigateToCatecismoParagraph}
                 >
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </Pressable>
@@ -294,30 +269,7 @@ export default function BookScreen() {
               {isJosemariaBook && isNumericJosemariaQuery ? (
                 <Pressable
                   style={[styles.goButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    const n = parseInt(trimmedQuery, 10);
-                    if (!Number.isFinite(n) || n <= 0) {
-                      Alert.alert('Número inválido', 'Digite um número de ponto válido.');
-                      return;
-                    }
-
-                    const text = findParagraphTextInBook(n);
-                    if (!text) {
-                      Alert.alert('Não encontrado', `O ponto ${n} não foi encontrado neste livro.`);
-                      return;
-                    }
-
-                    const chapterId = findChapterIdForParagraphInBook(n);
-                    if (!chapterId) {
-                      Alert.alert('Não encontrado', `O ponto ${n} não foi localizado em nenhum capítulo.`);
-                      return;
-                    }
-
-                    router.push({
-                      pathname: '/livro/[slug]/capitulo/[id]',
-                      params: { slug, id: chapterId.toString(), paragraph: n.toString() },
-                    });
-                  }}
+                  onPress={navigateToJosemariaParagraph}
                 >
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </Pressable>
