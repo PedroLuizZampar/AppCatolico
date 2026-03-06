@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pedro_luiz_zampar.AppCatolico"
+      "bundleIdentifier": "com.pedro_luiz_zampar.AppCatolico",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Para salvar imagens compartilhadas."
+      }
     },
     "android": {
       "adaptiveIcon": {
