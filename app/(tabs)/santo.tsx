@@ -218,15 +218,9 @@ export default function SantoScreen() {
                 styles.image,
                 { borderColor: colors.border },
                 imageAspectRatio ? { aspectRatio: imageAspectRatio } : { height: 200 },
-                today?.image_caption ? { marginBottom: spacing.xs } : undefined,
               ]}
               resizeMode="cover"
             />
-            {today?.image_caption ? (
-              <Text style={[styles.imageCaption, { color: colors.textMuted }]}>
-                {today.image_caption}
-              </Text>
-            ) : null}
           </Animated.View>
         ) : null}
 
@@ -320,12 +314,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    marginBottom: spacing.lg,
-  },
-  imageCaption: {
-    ...typography.small,
-    fontStyle: 'italic',
-    textAlign: 'center',
     marginBottom: spacing.lg,
   },
   textCard: {
