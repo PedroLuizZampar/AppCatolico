@@ -1,19 +1,17 @@
 import { MeditationShareCard } from '@/components/MeditationShareCard';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, Animated as RNAnimated, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, Animated as RNAnimated, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { captureRef } from 'react-native-view-shot';
 
 import { getCapituloBiblia, getLivroBiblicoBySlug } from '@/lib/bibliaData';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph, Versiculo } from '@/lib/types';
+import { copyToClipboard, shareAsImage, shareText, showNotification } from '@/lib/webShare';
 
 // Componente memoizado para cada versículo
 const VersiculoItem = React.memo<{
@@ -255,8 +253,8 @@ export default function CapituloBibliaScreen() {
 
     const textoCompleto = `${livro.nome} ${capitulo.capitulo}:${selectedVersiculos[0]}${selectedVersiculos.length > 1 ? '-' + selectedVersiculos[selectedVersiculos.length - 1] : ''}\n\n${textoParts.join('\n')}`;
 
-    await Clipboard.setStringAsync(textoCompleto);
-    Alert.alert('Copiado!', `${selectedVersiculos.length} versículo(s) copiado(s).`);
+    await copyToClipboard(textoCompleto);
+    showNotification(`${selectedVersiculos.length} versículo(s) copiado(s).`, 'Copiado!');
     handleCloseMenu();
   };
 
@@ -320,23 +318,13 @@ export default function CapituloBibliaScreen() {
     if (selectedVersiculos.length === 0 || !capitulo || !livro) return;
     
     if (selectedVersiculos.length === 1) {
+      const versiculo = capitulo.versiculos.find((v: Versiculo) => v.versiculo === selectedVersiculos[0]);
+      const textoFallback = `${livro.nome} ${capitulo.capitulo}:${selectedVersiculos[0]}\n\n"${versiculo?.texto ?? ''}"\n\n— Bíblia Sagrada · Sanctus`;
       try {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (!isAvailable) {
-          Alert.alert('Erro', 'Compartilhamento não disponível');
-          return;
-        }
-        
-        if (shareCardRef.current) {
-             const uri = await captureRef(shareCardRef, {
-              format: 'png',
-              quality: 1,
-            });
-            await Sharing.shareAsync(uri, { mimeType: 'image/png' });
-        }
+        await shareAsImage(shareCardRef, textoFallback);
       } catch (e) {
         console.error(e);
-        Alert.alert('Erro', 'Falha ao compartilhar imagem.');
+        showNotification('Falha ao compartilhar.', 'Erro');
       }
       handleCloseMenu();
       return;
@@ -350,7 +338,7 @@ export default function CapituloBibliaScreen() {
     const textoCompleto = `${livro.nome} ${capitulo.capitulo}:${selectedVersiculos[0]}${selectedVersiculos.length > 1 ? '-' + selectedVersiculos[selectedVersiculos.length - 1] : ''}\n\n${textoParts.join('\n')}`;
 
     try {
-      await Share.share({ message: textoCompleto });
+      await shareText(textoCompleto);
     } catch (error) {
       console.error('Erro ao compartilhar:', error);
     }

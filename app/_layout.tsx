@@ -1,6 +1,7 @@
 import { ThemeProvider, useTheme } from '@/lib/theme/ThemeContext';
 import { getColors } from '@/lib/theme/tokens';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
@@ -18,6 +19,14 @@ function RootLayoutNav() {
 
   return (
     <>
+      <Head>
+        <meta name="theme-color" content={isDark ? '#000000' : '#ffffff'} />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Sanctus" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="manifest" href="/manifest.json" />
+      </Head>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={{

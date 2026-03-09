@@ -4,13 +4,12 @@ import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph } from '@/lib/types';
+import { shareAsImage, showNotification } from '@/lib/webShare';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     AppState,
     Pressable,
     RefreshControl,
@@ -20,7 +19,6 @@ import {
     View
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { captureRef } from 'react-native-view-shot';
 
 // Função para pegar um parágrafo aleatório de qualquer livro
 const getRandomParagraph = () => {
@@ -126,34 +124,17 @@ export default function MeditacaoScreen() {
       setIsSharing(true);
       // O share sheet pode colocar o app em background/inactive; não queremos trocar a meditação ao voltar.
       ignoreNextActiveRefreshUntilRef.current = Date.now() + 15000;
-      
-      // Verifica se o compartilhamento está disponível
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Erro', 'Compartilhamento não está disponível neste dispositivo');
-        return;
-      }
 
-      // Captura a view como imagem
-      if (shareCardRef.current) {
-        const uri = await captureRef(shareCardRef, {
-          format: 'png',
-          quality: 1,
-        });
+      const textoFallback = `${meditation.bookTitle}\n${meditation.bookSlug === 'frases-de-santos' ? meditation.chapterName : `Cap. ${meditation.chapterNumber} · ${meditation.chapterName}`}\n\n"${meditation.text}"\n\n#${meditation.number} — Sanctus`;
 
-        // Compartilha a imagem
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Compartilhar Meditação',
-        });
-      }
+      await shareAsImage(shareCardRef, textoFallback);
     } catch (error) {
       console.error('Erro ao compartilhar:', error);
-      Alert.alert('Erro', 'Não foi possível compartilhar a meditação');
+      showNotification('Não foi possível compartilhar a meditação', 'Erro');
     } finally {
       setIsSharing(false);
     }
-  }, []);
+  }, [meditation]);
 
   const toggleFavorite = async () => {
     try {
@@ -184,7 +165,7 @@ export default function MeditacaoScreen() {
         await addFavorite(newFavorite);
       }
     } catch {
-      Alert.alert('Erro', 'Não foi possível atualizar os favoritos');
+      showNotification('Não foi possível atualizar os favoritos', 'Erro');
     }
   };
 

@@ -10,9 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pedro_luiz_zampar.AppCatolico",
+      "bundleIdentifier": "com.pedroluizzampar.appcatolico",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Para salvar imagens compartilhadas."
+        "NSPhotoLibraryUsageDescription": "Para salvar imagens compartilhadas.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +27,8 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/nova-logo-app.jpg"
+      "favicon": "./assets/nova-logo-app.jpg",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",

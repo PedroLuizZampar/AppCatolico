@@ -1,14 +1,11 @@
 import { MeditationShareCard } from '@/components/MeditationShareCard';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, Animated as RNAnimated, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, Animated as RNAnimated, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { captureRef } from 'react-native-view-shot';
 
 import { getBookBySlug } from '@/lib/data';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
@@ -17,6 +14,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph } from '@/lib/types';
 import { getViaSacraImageSource, getViaSacraStation } from '@/lib/viaSacra';
+import { copyToClipboard, shareAsImage, shareText, showNotification } from '@/lib/webShare';
 import misteriosRaw from '../../../../data/Rosário/Mistérios Terço.json';
 
 // Componente memoizado para cada parágrafo
@@ -343,8 +341,8 @@ export default function ChapterScreen() {
 
     const textoCompleto = `${header}\n\n${textoParts.join('\n\n')}`;
 
-    await Clipboard.setStringAsync(textoCompleto);
-    Alert.alert('Copiado!', `${selectedParagraphs.length} parágrafo(s) copiado(s).`);
+    await copyToClipboard(textoCompleto);
+    showNotification(`${selectedParagraphs.length} parágrafo(s) copiado(s).`, 'Copiado!');
     handleCloseMenu();
   };
 
@@ -410,23 +408,13 @@ export default function ChapterScreen() {
     if (selectedParagraphs.length === 0 || !chapter || !book) return;
     
     if (selectedParagraphs.length === 1) {
+      const p = chapter.paragraphs.find(item => item.number === selectedParagraphs[0]);
+      const textoFallback = `${book.title}\n${isCatecismo ? `CIC §${selectedParagraphs[0]}` : `Cap. ${chapter.chapter} · ${chapter.name}`}\n\n"${p?.text ?? ''}"\n\n#${selectedParagraphs[0]} — Sanctus`;
       try {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (!isAvailable) {
-          Alert.alert('Erro', 'Compartilhamento não disponível');
-          return;
-        }
-        
-        if (shareCardRef.current) {
-             const uri = await captureRef(shareCardRef, {
-              format: 'png',
-              quality: 1,
-            });
-            await Sharing.shareAsync(uri, { mimeType: 'image/png' });
-        }
+        await shareAsImage(shareCardRef, textoFallback);
       } catch (e) {
         console.error(e);
-        Alert.alert('Erro', 'Falha ao compartilhar imagem.');
+        showNotification('Falha ao compartilhar.', 'Erro');
       }
       handleCloseMenu();
       return;
@@ -440,7 +428,7 @@ export default function ChapterScreen() {
     const textoCompleto = `${book.title} - Cap. ${chapter.chapter}\n\n${textoParts.join('\n\n')}`;
 
     try {
-      await Share.share({ message: textoCompleto });
+      await shareText(textoCompleto);
     } catch (error) {
       console.error('Erro ao compartilhar:', error);
     }
