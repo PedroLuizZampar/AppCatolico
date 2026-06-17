@@ -41,3 +41,10 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local development scripts
+scripts/run-cron-local.js
+scripts/dev-server.js
+
+# env file
+.env

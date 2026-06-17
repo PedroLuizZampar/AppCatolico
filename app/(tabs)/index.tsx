@@ -1,10 +1,8 @@
-import { BookCard } from '@/components/BookCard';
-import { BOOKS } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,10 +13,91 @@ export default function HomeScreen() {
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
 
-  const catecismo = BOOKS.find(b => b.slug === 'catecismo');
-  const frasesDeSantos = BOOKS.find(b => b.slug === 'frases-de-santos');
-  const viaSacra = BOOKS.find(b => b.slug === 'via-sacra');
-  const misteriosTerco = BOOKS.find(b => b.slug === 'misterios-terco');
+  const formattedDate = useMemo(() => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    };
+    const dateStr = new Date().toLocaleDateString('pt-BR', options);
+    return dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  }, []);
+
+  const menuItems = [
+    {
+      title: 'Liturgia Diária',
+      subtitle: 'Leituras do dia',
+      icon: 'calendar-outline', // Ícone de calendário com linhas de texto
+      color: '#4CAF50', // Verde
+      route: '/liturgia',
+      library: 'Ionicons',
+    },
+    {
+      title: 'Evangelho Meditado',
+      subtitle: 'Reflexão diária',
+      icon: 'book-open-variant', // Livro aberto
+      color: '#9C27B0', // Roxo
+      route: '/meditacao-evangelho',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Santo do Dia',
+      subtitle: 'História e virtudes',
+      icon: 'candle',
+      color: '#E91E63', // Rosa
+      route: '/santo',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Curiosidade Diária',
+      subtitle: 'Fatos e Doutrina',
+      icon: 'lightbulb-on-outline', // Lâmpada acesa estilizada
+      color: '#FF9800', // Laranja
+      route: '/curiosidades',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Bíblia Sagrada',
+      subtitle: 'Palavra de Deus',
+      icon: 'book-cross',
+      color: '#2196F3', // Azul
+      route: '/biblia',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Biblioteca',
+      subtitle: 'Livros e Catecismo',
+      icon: 'bookshelf', // Estante cheia de livros
+      color: '#795548', // Marrom
+      route: '/livros',
+      library: 'MaterialCommunityIcons',
+      },
+    {
+      title: 'Frases de Santos',
+      subtitle: 'Pensamentos',
+      icon: 'format-quote-close', // Aspas de citação/frases
+      color: '#607D8B', // Azul Acinzentado
+      route: '/livro/frases-de-santos',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Santo Rosário',
+      subtitle: 'Mistérios do Terço',
+      icon: 'hands-pray', // Mãos postas em oração (ou 'rosary' se preferir o terço literal)
+      color: '#E53935', // Vermelho da Rosa
+      route: '/livro/misterios-terco',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Via Sacra',
+      subtitle: 'Meditação da Paixão',
+      icon: 'cross', // A própria cruz de Cristo para a Via Crucis
+      color: '#FF5722', // Laranja Escuro
+      route: '/livro/via-sacra',
+      library: 'MaterialCommunityIcons',
+    },
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -26,18 +105,18 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: spacing.sm + insets.bottom }
+          { paddingBottom: spacing.lg + insets.bottom }
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header minimalista */}
+        {/* Cabeçalho simplificado com data e favorito */}
         <Animated.View 
           entering={FadeInDown.duration(400).delay(100)}
           style={styles.header}
         >
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>Biblioteca</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>São Josemaria Escrivá</Text>
+          <View style={styles.dateContainer}>
+            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+            <Text style={[styles.dateText, { color: colors.textSecondary }]}>{formattedDate}</Text>
           </View>
           <Pressable 
             style={[styles.iconButton, { 
@@ -50,8 +129,8 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Card de Meditação Rápida */}
-        <Animated.View entering={FadeInDown.duration(400).delay(150)}>
+        {/* Card Destaque: Meditação Rápida */}
+        <Animated.View entering={FadeInDown.duration(400).delay(200)}>
           <Pressable
             style={({ pressed }) => [
               styles.meditationCard,
@@ -64,12 +143,12 @@ export default function HomeScreen() {
           >
             <View style={styles.meditationContent}>
               <View style={styles.meditationIcon}>
-                <Text style={styles.meditationEmoji}>💭</Text>
+                <MaterialCommunityIcons name="comment-text-outline" size={24} color="#fff" />
               </View>
               <View style={styles.meditationText}>
                 <Text style={styles.meditationTitle}>Meditação Rápida</Text>
                 <Text style={styles.meditationSubtitle}>
-                  Um parágrafo inspirador para sua reflexão diária
+                  Um ponto de reflexão diária de São Josemaria Escrivá para o seu dia.
                 </Text>
               </View>
               <View style={styles.meditationArrow}>
@@ -79,71 +158,43 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Lista de livros */}
-        <View style={styles.booksSection}>
-          <Animated.View entering={FadeInDown.duration(400).delay(200)}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.collectionCard,
-                shadows.sm,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-              onPress={() => router.push('/livro/sao-josemaria')}
+        {/* Grid de Funcionalidades */}
+        <View style={styles.gridContainer}>
+          {menuItems.map((item, index) => (
+            <Animated.View 
+              key={item.title} 
+              entering={FadeInDown.duration(400).delay(250 + index * 50)}
+              style={styles.gridItem}
             >
-              <View style={[styles.collectionIconContainer, { backgroundColor: colors.surfaceLight }]}>
-                <Text style={styles.collectionIcon}>📚</Text>
-              </View>
-              <View style={styles.collectionContent}>
-                <Text style={[styles.collectionTitle, { color: colors.text }]}>Livros de São Josemaria</Text>
-                <Text style={[styles.collectionAuthor, { color: colors.textSecondary }]}>Caminho • Sulco • Forja</Text>
-                <Text style={[styles.collectionDescription, { color: colors.textMuted }]} numberOfLines={2}>
-                  Trilogia clássica de pontos de meditação e vida cristã.
-                </Text>
-                <View style={[styles.collectionFooter, { borderTopColor: colors.divider }]}>
-                  <Text style={[styles.collectionFooterText, { color: colors.textSecondary }]}>3 livros</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.card,
+                  shadows.sm,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+                onPress={() => router.push(item.route as any)}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
+                  {item.library === 'MaterialCommunityIcons' ? (
+                    <MaterialCommunityIcons name={item.icon as any} size={24} color={item.color} />
+                  ) : (
+                    <Ionicons name={item.icon as any} size={24} color={item.color} />
+                  )}
                 </View>
-              </View>
-            </Pressable>
-          </Animated.View>
-
-          {catecismo ? (
-            <Animated.View entering={FadeInDown.duration(400).delay(300)}>
-              <BookCard book={catecismo} onPress={() => router.push(`/livro/${catecismo.slug}`)} />
+                <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2} textBreakStrategy="simple">
+                  {item.title}
+                </Text>
+                <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]} numberOfLines={2}>
+                  {item.subtitle}
+                </Text>
+              </Pressable>
             </Animated.View>
-          ) : null}
-
-          {frasesDeSantos ? (
-            <Animated.View entering={FadeInDown.duration(400).delay(325)}>
-              <BookCard book={frasesDeSantos} onPress={() => router.push(`/livro/${frasesDeSantos.slug}`)} />
-            </Animated.View>
-          ) : null}
-
-          {viaSacra ? (
-            <Animated.View entering={FadeInDown.duration(400).delay(350)}>
-              <BookCard book={viaSacra} onPress={() => router.push(`/livro/${viaSacra.slug}`)} />
-            </Animated.View>
-          ) : null}
-
-          {misteriosTerco ? (
-            <Animated.View entering={FadeInDown.duration(400).delay(375)}>
-              <BookCard book={misteriosTerco} onPress={() => router.push(`/livro/${misteriosTerco.slug}`)} />
-            </Animated.View>
-          ) : null}
+          ))}
         </View>
-
-        {/* Footer minimalista */}
-        <Animated.View 
-          entering={FadeInDown.duration(400).delay(600)}
-          style={[styles.footer, { borderTopColor: colors.divider }]}
-        >
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-            Desenvolvido com ❤️ para a glória de Deus
-          </Text>
-        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -163,33 +214,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
-    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  welcomeText: {
+    ...typography.small,
+    fontWeight: '500',
   },
   title: {
-    ...typography.h1,
-    marginBottom: 4,
-  },
-  subtitle: {
-    ...typography.body,
+    ...typography.h2,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.round,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  dateText: {
+    ...typography.body,
+    fontWeight: '500',
   },
   meditationCard: {
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.xl,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
   },
   meditationContent: {
     flexDirection: 'row',
@@ -199,8 +258,8 @@ const styles = StyleSheet.create({
   meditationIcon: {
     width: 48,
     height: 48,
-    borderRadius: borderRadius.round,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -209,74 +268,66 @@ const styles = StyleSheet.create({
   },
   meditationText: {
     flex: 1,
+    gap: 2,
   },
   meditationTitle: {
-    ...typography.h3,
+    ...typography.bodyLarge,
+    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
   },
   meditationSubtitle: {
-    ...typography.small,
-    color: 'rgba(255,255,255,0.9)',
-    lineHeight: 18,
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 16,
   },
   meditationArrow: {
-    opacity: 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  booksSection: {
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.md,
-    marginBottom: spacing.xl,
   },
-  collectionCard: {
+  gridItem: {
+    width: '47%',
+    aspectRatio: 1,
+  },
+  card: {
+    flex: 1,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     borderWidth: 1,
+    padding: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  collectionIconContainer: {
-    width: 56,
-    height: 56,
+  iconContainer: {
+    width: 42,
+    height: 42,
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
-  collectionIcon: {
-    fontSize: 32,
-  },
-  collectionContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  collectionTitle: {
-    ...typography.h3,
-  },
-  collectionAuthor: {
-    ...typography.caption,
-  },
-  collectionDescription: {
+  cardTitle: {
     ...typography.body,
-    marginTop: spacing.xs,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
-  collectionFooter: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  collectionFooterText: {
-    ...typography.small,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  cardSubtitle: {
+    ...typography.caption,
+    marginTop: 2,
+    textAlign: 'center',
   },
   footer: {
-    paddingTop: spacing.xl,
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
     borderTopWidth: 1,
     alignItems: 'center',
   },
   footerText: {
-    ...typography.small,
-    opacity: 0.6,
+    ...typography.caption,
+    fontStyle: 'italic',
   },
 });

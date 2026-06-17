@@ -492,7 +492,7 @@ export default function CapituloBibliaScreen() {
           chapterNumber={currentChapterId}
           chapterName={`Capítulo ${currentChapterId}`}
           bookTitle={livro.nome}
-          bookIcon="📖"
+          bookIcon="book-open-variant"
           bookAuthor="Bíblia Sagrada"
           bookColor={colors.primary}
           date={new Date().toLocaleDateString('pt-BR')}

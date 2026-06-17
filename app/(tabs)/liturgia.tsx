@@ -1,20 +1,21 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { capitalizeWordsExceptDe, formatDatePT } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+
 
 // --- Interfaces de Dados (Tipagem) ---
 interface LeituraItem {
@@ -29,6 +30,13 @@ interface SalmoItem {
   texto: string;
 }
 
+interface LeituraExtra {
+  tipo?: string;       // ex: "Terceira Leitura", "Epístola"
+  titulo?: string;
+  referencia?: string;
+  texto?: string;
+}
+
 interface LiturgyData {
   data: string;
   liturgia: string;
@@ -38,6 +46,7 @@ interface LiturgyData {
     salmo: SalmoItem[];
     segundaLeitura: LeituraItem[];
     evangelho: LeituraItem[];
+    extras?: LeituraExtra[];
   };
 }
 
@@ -210,9 +219,84 @@ const renderTextWithSuperscript = (text: string, color: string, reference: strin
 
 // --- Componentes de Leitura (Cards de Página) ---
 
+// --- Funções Auxiliares para Renderização de Markdown em Linha ---
+const parseMarkdownText = (text: string, style: any) => {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <Text key={index} style={[style, { fontWeight: 'bold' }]}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <Text key={index} style={[style, { fontStyle: 'italic' }]}>
+          {part.slice(1, -1)}
+        </Text>
+      );
+    }
+    return <Text key={index} style={style}>{part}</Text>;
+  });
+};
+
+const renderMarkdownInPage = (markdown: string, colors: any) => {
+  if (!markdown) return null;
+  const lines = markdown.split('\n');
+  return lines.map((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return <View key={index} style={{ height: 8 }} />;
+    }
+
+    if (trimmed.startsWith('# ')) {
+      const titleText = trimmed.slice(2).replace(/^\*\*|^\*|\*\*$|\*$/g, '');
+      return (
+        <Text key={index} style={[typography.h2, { color: colors.text, marginTop: 16, marginBottom: 8 }]}>
+          {parseMarkdownText(titleText, [typography.h2, { color: colors.text }])}
+        </Text>
+      );
+    }
+    if (trimmed.startsWith('## ')) {
+      const titleText = trimmed.slice(3).replace(/^\*\*|^\*|\*\*$|\*$/g, '');
+      return (
+        <Text key={index} style={[typography.h3, { color: colors.text, marginTop: 14, marginBottom: 6 }]}>
+          {parseMarkdownText(titleText, [typography.h3, { color: colors.text }])}
+        </Text>
+      );
+    }
+    if (trimmed.startsWith('### ')) {
+      const titleText = trimmed.slice(4).replace(/^\*\*|^\*|\*\*$|\*$/g, '');
+      return (
+        <Text key={index} style={[typography.h4, { color: colors.text, marginTop: 12, marginBottom: 4 }]}>
+          {parseMarkdownText(titleText, [typography.h4, { color: colors.text }])}
+        </Text>
+      );
+    }
+
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+      return (
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingLeft: 8, marginVertical: 3 }}>
+          <Text style={[typography.body, { color: colors.primary, marginRight: 6 }]}>•</Text>
+          <Text style={{ flex: 1 }}>
+            {parseMarkdownText(trimmed.slice(2), [typography.body, { color: colors.text }])}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <Text key={index} style={{ marginVertical: 6 }}>
+        {parseMarkdownText(trimmed, [typography.body, { color: colors.text, lineHeight: 24 }])}
+      </Text>
+    );
+  });
+};
+
 interface ReadingPageProps {
   title: string;
-  data?: LeituraItem;
+  data: LeituraItem;
   isDark: boolean;
 }
 
@@ -251,7 +335,8 @@ const ReadingPage: React.FC<ReadingPageProps> = ({ title, data, isDark }) => {
   return (
     <View style={styles.pageContainer}>
       <ScrollView 
-        contentContainerStyle={[styles.cardContent, { backgroundColor: colors.surface }]}
+        style={styles.scrollView}
+        contentContainerStyle={styles.cardContent}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.cardTitle, { color: colors.text, borderBottomColor: colors.divider }]}>
@@ -296,7 +381,7 @@ const SalmoPage: React.FC<SalmoPageProps> = ({ data, isDark }) => {
 
   return (
     <View style={styles.pageContainer}>
-      <ScrollView contentContainerStyle={[styles.cardContent, { backgroundColor: colors.surface }]}>
+      <ScrollView contentContainerStyle={styles.cardContent}>
         <Text style={[styles.cardTitle, { color: colors.text, borderBottomColor: colors.divider }]}>
           Salmo Responsorial
         </Text>
@@ -516,6 +601,20 @@ const CalendarModal: React.FC<CalendarModalProps> = ({
   );
 };
 
+// Converte nome ordinal por extenso (API) para formato "n° Leitura"
+const ordinalMap: Record<string, string> = {
+  'Primeira': '1ª', 'Segunda': '2ª', 'Terceira': '3ª', 'Quarta': '4ª',
+  'Quinta': '5ª', 'Sexta': '6ª', 'Sétima': '7ª', 'Oitava': '8ª',
+};
+const normalizeReadingLabel = (tipo: string): string => {
+  for (const [word, ordinal] of Object.entries(ordinalMap)) {
+    if (tipo.startsWith(word)) {
+      return tipo.replace(word, ordinal);
+    }
+  }
+  return tipo; // Epístola e outros ficam como estão
+};
+
 // --- Componente Principal ---
 export default function LiturgiaScreen() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -524,6 +623,8 @@ export default function LiturgiaScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
+  const [navOverflow, setNavOverflow] = useState<boolean | null>(null);
+  const navBarWidth = React.useRef<number>(0);
   const flatListRef = React.useRef<FlatList>(null);
   const { isDark } = useTheme();
   const colors = getColors(isDark);
@@ -566,54 +667,91 @@ export default function LiturgiaScreen() {
     setSelectedDate(date);
     setLoading(true);
     setActivePageIndex(0);
+    setNavOverflow(null);
   };
 
   const pages = useMemo(() => {
     if (!liturgy?.leituras) return [];
-    
+
     const { leituras } = liturgy;
-    const allPages = [];
-    
-    // Primeira Leitura
-    if (leituras.primeiraLeitura && leituras.primeiraLeitura.length > 0) {
-      allPages.push({ 
-        type: 'reading', 
+    const allPages: { type: string; title: string; navTitle: string; data: any }[] = [];
+
+    // Índice para percorrer os salmos sequencialmente
+    let salmoIndex = 0;
+    const totalSalmos = leituras.salmo?.length ?? 0;
+
+    const pushSalmo = (label: string) => {
+      if (salmoIndex < totalSalmos) {
+        allPages.push({
+          type: 'salmo',
+          title: 'Salmo',
+          navTitle: label,
+          data: leituras.salmo[salmoIndex],
+        });
+        salmoIndex++;
+      }
+    };
+
+    // 1ª Leitura (usa apenas a forma longa, índice 0)
+    if (leituras.primeiraLeitura?.length > 0) {
+      allPages.push({
+        type: 'reading',
         title: '1ª Leitura',
         navTitle: '1ª Leitura',
-        data: leituras.primeiraLeitura[0] 
+        data: leituras.primeiraLeitura[0],
       });
+      pushSalmo('Salmo');
     }
-    
-    // Salmo
-    if (leituras.salmo && leituras.salmo.length > 0) {
-      allPages.push({ 
-        type: 'salmo',
-        title: 'Salmo',
-        navTitle: 'Salmo',
-        data: leituras.salmo[0] 
-      });
-    }
-    
-    // Segunda Leitura (se existir)
-    if (leituras.segundaLeitura && leituras.segundaLeitura.length > 0) {
-      allPages.push({ 
-        type: 'reading', 
+
+    // 2ª Leitura (ex: Gênesis – Abraão na Vigília)
+    if (leituras.segundaLeitura?.length > 0) {
+      allPages.push({
+        type: 'reading',
         title: '2ª Leitura',
         navTitle: '2ª Leitura',
-        data: leituras.segundaLeitura[0] 
+        data: leituras.segundaLeitura[0],
       });
+      pushSalmo('Salmo');
     }
-    
+
+    // Leituras extras (Vigília Pascal: 3ª, 4ª, 5ª, 6ª, 7ª, Epístola)
+    const extrasLeituras = (leituras.extras ?? []).filter(
+      (e) => e.tipo && e.referencia && e.texto
+    );
+    extrasLeituras.forEach((extra, idx) => {
+      const rawLabel = extra.tipo ?? `${idx + 3}ª Leitura`;
+      const label = normalizeReadingLabel(rawLabel);
+      allPages.push({
+        type: 'reading',
+        title: label,
+        navTitle: label,
+        data: {
+          referencia: extra.referencia ?? '',
+          titulo: extra.titulo ?? '',
+          texto: extra.texto ?? '',
+        } as LeituraItem,
+      });
+      // Para cada leitura extra que não seja a Epístola, consome um salmo
+      if (extra.tipo !== 'Epístola') {
+        pushSalmo('Salmo');
+      }
+    });
+
+    // Consome quaisquer salmos restantes (ex: Aleluia após Epístola)
+    while (salmoIndex < totalSalmos) {
+      pushSalmo('Salmo');
+    }
+
     // Evangelho
-    if (leituras.evangelho && leituras.evangelho.length > 0) {
-      allPages.push({ 
-        type: 'evangelho', 
+    if (leituras.evangelho?.length > 0) {
+      allPages.push({
+        type: 'evangelho',
         title: 'Evangelho',
         navTitle: 'Evangelho',
-        data: leituras.evangelho[0] 
+        data: leituras.evangelho[0],
       });
     }
-    
+
     return allPages;
   }, [liturgy]);
 
@@ -676,52 +814,56 @@ export default function LiturgiaScreen() {
         isDark={isDark}
       />
 
-      {/* Cabeçalho em formato de Card */}
+      {/* Cabeçalho centralizado */}
       <Animated.View 
         entering={FadeInDown.duration(400)}
-        style={[
-          styles.headerCard, 
-          shadows.md,
-          { backgroundColor: colors.surface, borderColor: colors.border }
-        ]}
+        style={styles.pageHeader}
       >
-        <View style={styles.headerTextContainer}>
-          <Text style={[styles.mainTitle, { color: colors.text }]}>
-            {liturgy.liturgia}
+        <Text style={[styles.mainTitle, { color: colors.text }]}>
+          {liturgy.liturgia}
+        </Text>
+        <Pressable 
+          onPress={() => setShowCalendar(true)}
+          style={({ pressed }) => [
+            styles.dateButton,
+            { opacity: pressed ? 0.7 : 1 }
+          ]}
+        >
+          <View 
+            style={[
+              styles.colorIndicator, 
+              { backgroundColor: liturgyColor, borderColor: colors.border }
+            ]} 
+          />
+          <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+            {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
           </Text>
-          <Pressable 
-            onPress={() => setShowCalendar(true)}
-            style={({ pressed }) => [
-              styles.dateButton,
-              { opacity: pressed ? 0.7 : 1 }
-            ]}
-          >
-            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-            <Text
-              style={[styles.dateText, { color: colors.textSecondary }]}
-            >
-              {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
-            </Text>
-          </Pressable>
-        </View>
-        <View 
-          style={[
-            styles.colorIndicator, 
-            { 
-              backgroundColor: liturgyColor,
-              borderColor: colors.border,
-            }
-          ]} 
-        />
+        </Pressable>
       </Animated.View>
 
       {/* Navbar de Navegação entre Leituras */}
       {pages.length > 0 && (
-        <Animated.View 
+        <Animated.View
           entering={FadeIn.duration(500).delay(200)}
           style={[styles.navBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+          onLayout={(e) => { navBarWidth.current = e.nativeEvent.layout.width; }}
         >
-          <View style={styles.navBarContent}>
+          <ScrollView
+            horizontal
+            scrollEnabled={navOverflow === true}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.navBarContent,
+              // Preenche a barra só quando confirmado que cabe sem scroll
+              navOverflow === false && { width: navBarWidth.current },
+            ]}
+            onContentSizeChange={(contentWidth) => {
+              if (navBarWidth.current > 0) {
+                setNavOverflow(contentWidth > navBarWidth.current + 1);
+              }
+            }}
+          >
             {pages.map((page, index) => (
               <Pressable
                 key={index}
@@ -731,14 +873,17 @@ export default function LiturgiaScreen() {
                 }}
                 style={[
                   styles.navButton,
-                  activePageIndex === index && { 
+                  // flex:1 só quando confirmado que não há overflow
+                  navOverflow === false && { flex: 1 },
+                  activePageIndex === index && {
                     backgroundColor: colors.primary + '15',
                     borderBottomWidth: 3,
                     borderBottomColor: colors.primary,
                   }
                 ]}
               >
-                <Text 
+                <Text
+                  numberOfLines={1}
                   style={[
                     styles.navButtonText,
                     { color: activePageIndex === index ? colors.primary : colors.textSecondary },
@@ -749,7 +894,7 @@ export default function LiturgiaScreen() {
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
         </Animated.View>
       )}
 
@@ -801,42 +946,32 @@ const styles = StyleSheet.create({
     ...typography.body,
     textAlign: 'center',
   },
-  headerCard: {
-    borderRadius: borderRadius.lg,
-    marginVertical: spacing.md,
-    marginHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  pageHeader: {
     alignItems: 'center',
-    borderWidth: 1,
-  },
-  headerTextContainer: {
-    flex: 1,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   mainTitle: {
-    ...typography.h4,
-    fontWeight: '600',
+    ...typography.h3,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   dateText: {
     ...typography.body,
-    marginTop: spacing.xs,
     flexShrink: 1,
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginTop: spacing.xs,
     flexShrink: 1,
     minWidth: 0,
   },
   colorIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginLeft: spacing.md,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
   },
   navBar: {
@@ -846,19 +981,22 @@ const styles = StyleSheet.create({
   navBarContent: {
     flexDirection: 'row',
     paddingHorizontal: spacing.md,
+    alignItems: 'center',
   },
   navButton: {
-    flex: 1,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 90,
+    flexShrink: 0,
   },
   navButtonText: {
     ...typography.small,
     fontWeight: '600',
     textAlign: 'center',
+    flexShrink: 0,
   },
   pageContainer: {
     width: width,
@@ -927,7 +1065,6 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    ...shadows.lg,
   },
   quickSelectContainer: {
     flexDirection: 'row',
@@ -1005,5 +1142,69 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: '#fff',
     fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  meditationSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+  },
+  meditationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  meditationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  meditationEmoji: {
+    fontSize: 20,
+  },
+  meditationSectionTitle: {
+    ...typography.h4,
+    fontWeight: 'bold',
+  },
+  reloadButton: {
+    padding: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  meditationLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    justifyContent: 'center',
+  },
+  meditationLoadingText: {
+    ...typography.small,
+  },
+  meditationErrorContainer: {
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  meditationErrorText: {
+    ...typography.small,
+    textAlign: 'center',
+  },
+  retryMeditationButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryMeditationButtonText: {
+    ...typography.small,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  meditationContentCard: {
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderWidth: 1,
   },
 });

@@ -1,6 +1,6 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors } from '@/lib/theme/tokens';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Pressable } from 'react-native';
@@ -54,10 +54,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Livros',
+          title: 'Início',
           headerTitle: 'Sanctus',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library-outline" size={size} color={color} />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
@@ -67,7 +67,7 @@ export default function TabLayout() {
           title: 'Bíblia',
           headerTitle: 'Bíblia Sagrada',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="book-cross" size={size} color={color} />
           ),
         }}
       />
@@ -78,16 +78,6 @@ export default function TabLayout() {
           headerTitle: 'Liturgia Diária',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="santo"
-        options={{
-          title: 'Santo',
-          headerTitle: 'Santo do Dia',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
           ),
         }}
       />

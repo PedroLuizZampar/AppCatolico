@@ -41,6 +41,10 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="santo" options={{ title: 'Santo do Dia' }} />
+        <Stack.Screen name="curiosidades" options={{ title: 'Curiosidades Católicas' }} />
+        <Stack.Screen name="meditacao-evangelho" options={{ title: 'Meditação do Evangelho' }} />
+        <Stack.Screen name="livros" options={{ title: 'Biblioteca de Livros' }} />
         <Stack.Screen name="meditacao" options={{ title: 'Meditação Rápida' }} />
         <Stack.Screen name="buscar" options={{ title: 'Buscar' }} />
         <Stack.Screen name="favoritos" options={{ title: 'Favoritos' }} />

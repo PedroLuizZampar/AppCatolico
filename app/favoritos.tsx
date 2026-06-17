@@ -316,7 +316,7 @@ export default function FavoritesScreen() {
             entering={FadeInDown.duration(400)}
             style={styles.emptyState}
           >
-            <Text style={styles.emptyIcon}>❤️</Text>
+            <Ionicons name="heart-outline" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Nenhum favorito</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Seus trechos favoritos aparecerão aqui

@@ -1,5 +1,5 @@
 import { MeditationShareCard } from '@/components/MeditationShareCard';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -201,10 +201,7 @@ export default function ChapterScreen() {
     return chapter?.name;
   }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel]);
 
-  const viaSacraHeadingColor = useMemo(() => {
-    // Queremos um cinza mais claro para diferenciar os títulos (h4)
-    return isDark ? colors.textSecondary : colors.textMuted;
-  }, [isDark, colors.textSecondary, colors.textMuted]);
+
 
   // Navegação entre capítulos
   const handlePrevChapter = () => {
@@ -625,7 +622,7 @@ export default function ChapterScreen() {
                             {(mystery.leitura_biblica?.referencia || mystery.leitura_biblica?.texto) ? (
                               <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                                 <View style={styles.mysterySectionHeader}>
-                                  <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                                  <MaterialCommunityIcons name="book-cross" size={18} color={colors.primary} />
                                   <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Leitura Bíblica</Text>
                                 </View>
                                 {mystery.leitura_biblica?.referencia ? (
@@ -645,7 +642,7 @@ export default function ChapterScreen() {
                             {/* Seção: Orações */}
                             <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                               <View style={styles.mysterySectionHeader}>
-                                <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                                <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
                                 <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
                               </View>
                               {(mystery.oracoes?.pai_nosso || mystery.oracoes?.ave_marias) ? (
@@ -708,7 +705,7 @@ export default function ChapterScreen() {
                     return (
                       <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                          <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                          <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
                           <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
                         </View>
                         {item.text ? (
@@ -742,7 +739,7 @@ export default function ChapterScreen() {
                   ) : (
                     <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Ionicons name="heart-outline" size={18} color={colors.primary} />
+                        <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
                         <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>{label}</Text>
                       </View>
                       <Text style={[styles.viaSacraCardText, { color: colors.text }]}>

@@ -1,6 +1,6 @@
 import { fetchSantoDoDia, SantoContentBlock, SantoDoDiaResponse } from '@/lib/santoDoDia';
 import { useTheme } from '@/lib/theme/ThemeContext';
-import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { capitalizeWordsExceptDe, formatDatePT, monthIndexFromLabel, monthLabelPt } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -193,20 +193,18 @@ export default function SantoScreen() {
       >
         <Animated.View
           entering={FadeInDown.duration(400)}
-          style={[styles.headerCard, shadows.md, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={styles.pageHeader}
         >
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.mainTitle, { color: colors.text }]}>
-              {today?.title || 'Santo do Dia'}
+          <Text style={[styles.mainTitle, { color: colors.text }]}>
+            {today?.title || 'Santo do Dia'}
+          </Text>
+          <View style={styles.dateButton}>
+            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+              {capitalizeWordsExceptDe(
+                formatSantoDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel
+              )}
             </Text>
-            <View style={styles.dateButton}>
-              <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                {capitalizeWordsExceptDe(
-                  formatSantoDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel
-                )}
-              </Text>
-            </View>
           </View>
         </Animated.View>
 
@@ -225,31 +223,26 @@ export default function SantoScreen() {
         ) : null}
 
         <Animated.View entering={FadeInDown.duration(350).delay(260)}>
-          <View style={[styles.textCard, shadows.sm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {today?.content_blocks && today.content_blocks.length > 0 ? (
-              <View style={styles.blocksContainer}>{renderBlocks(today.content_blocks)}</View>
-            ) : (
-              <Text style={[styles.bodyText, { color: colors.text }]}>
-                {today?.full_text || 'Conteúdo indisponível.'}
-              </Text>
-            )}
-          </View>
+          {today?.content_blocks && today.content_blocks.length > 0 ? (
+            <View style={styles.blocksContainer}>{renderBlocks(today.content_blocks)}</View>
+          ) : (
+            <Text style={[styles.bodyText, { color: colors.text }]}>
+              {today?.full_text || 'Conteúdo indisponível.'}
+            </Text>
+          )}
         </Animated.View>
 
         {today?.outros_santos && today.outros_santos.length > 0 ? (
           <Animated.View entering={FadeInDown.duration(350).delay(320)}>
-            <View style={[styles.otherCard, shadows.sm, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Outros santos e beatos</Text>
-              {today.outros_santos
-                .filter(s => s.trim().length > 0)
-                .slice(0, 15)
-                .map((s, idx) => (
-                  <Text key={`${s}-${idx}`} style={[styles.otherItem, { color: colors.textSecondary }]}>
-                    • {s}
-                  </Text>
-                ))}
-            </View>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Outros santos e beatos</Text>
+            {today.outros_santos
+              .filter(s => s.trim().length > 0)
+              .slice(0, 15)
+              .map((s, idx) => (
+                <Text key={`${s}-${idx}`} style={[styles.otherItem, { color: colors.textSecondary }]}>
+                  • {s}
+                </Text>
+              ))}
           </Animated.View>
         ) : null}
       </ScrollView>
@@ -282,23 +275,15 @@ const styles = StyleSheet.create({
     ...typography.body,
     textAlign: 'center',
   },
-  headerCard: {
-    borderRadius: borderRadius.lg,
+  pageHeader: {
     marginTop: spacing.md,
     marginBottom: spacing.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-  },
-  headerTextContainer: {
-    flex: 1,
   },
   mainTitle: {
     ...typography.h4,
     fontWeight: '600',
+    textAlign: 'center',
   },
   dateText: {
     ...typography.body,
@@ -316,12 +301,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.lg,
   },
-  textCard: {
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    marginBottom: spacing.lg,
-  },
   bodyText: {
     ...typography.body,
     lineHeight: 24,
@@ -329,6 +308,7 @@ const styles = StyleSheet.create({
   },
   blocksContainer: {
     gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   blockH2: {
     ...typography.h2,
@@ -386,15 +366,10 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     textAlign: 'justify',
   },
-  otherCard: {
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    marginBottom: spacing.lg,
-  },
   sectionTitle: {
     ...typography.h3,
     fontWeight: '600',
+    marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
   otherItem: {

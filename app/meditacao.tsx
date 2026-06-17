@@ -5,7 +5,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { FavoriteParagraph } from '@/lib/types';
 import { shareAsImage, showNotification } from '@/lib/webShare';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -35,7 +35,7 @@ const getRandomParagraph = () => {
   ];
 
   // Na Meditação Rápida: Caminho com paleta roxa; Frases de Santos mantém azul.
-  const bookColor = randomBook.slug === 'caminho' ? '#9B59B6' : randomBook.color;
+  const bookColor = randomBook.slug === 'caminho' ? '#4A90E2' : randomBook.color;
 
   return {
     text: randomParagraph.text,
@@ -202,7 +202,7 @@ export default function MeditacaoScreen() {
             style={[styles.card, shadows.md, { backgroundColor: colors.surface }]}
           >
             <View style={[styles.bookBadge, { backgroundColor: meditation.bookColor + '20' }]}>
-              <Text style={styles.bookIcon}>{meditation.bookIcon}</Text>
+              <MaterialCommunityIcons name={meditation.bookIcon as any} size={16} color={meditation.bookColor} style={{ marginRight: spacing.xs }} />
               <Text style={[styles.bookTitle, { color: meditation.bookColor }]}>
                 {meditation.bookTitle}
               </Text>

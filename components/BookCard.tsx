@@ -1,6 +1,7 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { BookData } from '@/lib/types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -27,7 +28,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onPress }) => {
       onPress={onPress}
     >
       <View style={[styles.iconContainer, { backgroundColor: colors.surfaceLight }]}>
-        <Text style={styles.icon}>{book.icon}</Text>
+        <MaterialCommunityIcons name={book.icon as any} size={32} color={book.color} />
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>{book.title}</Text>

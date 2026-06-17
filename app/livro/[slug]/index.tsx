@@ -6,12 +6,32 @@ import { getBookBySlug } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { normalizeText } from '@/lib/utils';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated';
 import misteriosRaw from '../../../data/Rosário/Mistérios Terço.json';
+
+const getBookIcon = (slug: string, color: string) => {
+  const size = 36;
+  switch (slug) {
+    case 'caminho':
+    case 'sulco':
+    case 'forja':
+      return <MaterialCommunityIcons name="book-open-variant" size={size} color={color} />;
+    case 'catecismo':
+      return <MaterialCommunityIcons name="book-cross" size={size} color={color} />;
+    case 'frases-de-santos':
+      return <MaterialCommunityIcons name="format-quote-close" size={size} color={color} />;
+    case 'via-sacra':
+      return <MaterialCommunityIcons name="cross" size={size} color={color} />;
+    case 'misterios-terco':
+      return <MaterialCommunityIcons name="hands-pray" size={size} color={color} />;
+    default:
+      return <MaterialCommunityIcons name="book-open-variant" size={size} color={color} />;
+  }
+};
 
 export default function BookScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -33,10 +53,7 @@ export default function BookScreen() {
   const isNumericCatecismoQuery = isCatecismo && isNumericQuery;
   const isNumericJosemariaQuery = isJosemariaBook && isNumericQuery;
 
-  const totalParagraphs = useMemo(() => {
-    if (!book) return 0;
-    return book.data.chapters.reduce((acc, ch) => acc + ch.paragraphs.length, 0);
-  }, [book]);
+
 
   // Busca por conteúdo dos parágrafos (texto, não numérico)
   const matchingParagraphs = useMemo(() => {
@@ -115,16 +132,7 @@ export default function BookScreen() {
     return book.data.chapters;
   })();
 
-  const statsLabelChapters = isViaSacra 
-    ? 'estações' 
-    : isCatecismo 
-      ? 'temas' 
-      : isFrasesDeSantos 
-        ? 'santos'
-        : isMisteriosTerco
-          ? 'mistérios'
-          : 'capítulos';
-  const statsLabelParagraphs = isFrasesDeSantos ? 'frases' : isMisteriosTerco ? 'mistérios' : 'parágrafos';
+
 
   const navigateToCatecismoParagraph = () => {
     if (!isNumericCatecismoQuery) return;
@@ -203,31 +211,11 @@ export default function BookScreen() {
           style={styles.header}
         >
           <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={styles.icon}>{book.icon}</Text>
+            {getBookIcon(slug, book.color)}
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{book.title}</Text>
           <Text style={[styles.author, { color: colors.textSecondary }]}>{book.author}</Text>
           <Text style={[styles.description, { color: colors.textMuted }]}>{book.description}</Text>
-          
-          <View style={[styles.stats, { borderTopColor: colors.divider }]}>
-            <View style={styles.statItem}>
-              <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                {isViaSacra ? book.data.chapters.length - 1 : book.data.chapters.length} {statsLabelChapters}
-              </Text>
-            </View>
-            {!isViaSacra && !isMisteriosTerco ? (
-              <>
-                <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-                <View style={styles.statItem}>
-                  <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                    {totalParagraphs} {statsLabelParagraphs}
-                  </Text>
-                </View>
-              </>
-            ) : null}
-          </View>
         </Animated.View>
 
         {isCatecismo || isFrasesDeSantos || isJosemariaBook ? (

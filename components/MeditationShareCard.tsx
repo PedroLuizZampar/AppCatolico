@@ -1,4 +1,5 @@
 import { borderRadius, spacing, typography } from '@/lib/theme/tokens';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
@@ -41,7 +42,7 @@ export const MeditationShareCard = React.forwardRef<View, MeditationShareCardPro
           {/* Header com logo/marca */}
           <View style={styles.header}>
             <View style={[styles.iconContainer, { backgroundColor: bookColor + '20' }]}>
-              <Text style={styles.bookIcon}>{bookIcon}</Text>
+              <MaterialCommunityIcons name={bookIcon as any} size={40} color={bookColor} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.bookTitle}>{bookTitle}</Text>

@@ -4,7 +4,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
 import { LivroBiblico } from '@/lib/types';
 import { normalizeText } from '@/lib/utils';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -80,7 +80,10 @@ export default function BibliaScreen() {
         entering={FadeInDown.duration(400)}
         style={[styles.header, { backgroundColor: colors.surface }]}
       >
-        <Text style={[styles.title, { color: colors.text }]}>📖 Bíblia Sagrada</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 4 }}>
+          <MaterialCommunityIcons name="book-cross" size={24} color={colors.text} />
+          <Text style={[styles.title, { color: colors.text, marginBottom: 0 }]}>Bíblia Sagrada</Text>
+        </View>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Ave Maria</Text>
       </Animated.View>
 

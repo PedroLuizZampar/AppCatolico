@@ -1,7 +1,7 @@
 import { getLivroBiblicoBySlug } from '@/lib/bibliaData';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -48,7 +48,7 @@ export default function LivroBibliaScreen() {
           style={styles.header}
         >
           <View style={[styles.iconContainer, { backgroundColor: colors.surfaceLight }]}>
-            <Text style={styles.icon}>📖</Text>
+            <MaterialCommunityIcons name="book-open-variant" size={48} color={colors.primary} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{livro.nome}</Text>
           <Text style={[styles.testament, { color: colors.textSecondary }]}>
