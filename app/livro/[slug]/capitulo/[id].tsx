@@ -201,6 +201,66 @@ export default function ChapterScreen() {
     return chapter?.name;
   }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel]);
 
+  // Função para navegar para a Bíblia baseado em uma string de referência
+  const handleNavigateToBible = useCallback((referencia: string) => {
+    if (!referencia) return;
+
+    const bookSlugMap: Record<string, string> = {
+      'mateus': 'sao-mateus',
+      'marcos': 'sao-marcos',
+      'lucas': 'sao-lucas',
+      'joao': 'sao-joao',
+      'atos': 'atos-dos-apostolos',
+      'sao-mateus': 'sao-mateus',
+      'sao-marcos': 'sao-marcos',
+      'sao-lucas': 'sao-lucas',
+      'sao-joao': 'sao-joao',
+      'atos-dos-apostolos': 'atos-dos-apostolos',
+    };
+
+    const cleanRef = referencia.replace(/\(.*\)/g, '').trim();
+    const match = cleanRef.match(/^(.+?)\s+(\d+)\s*,\s*([\d\s\-,]+)/);
+    if (!match) return;
+
+    const livroNomeRaw = match[1].trim();
+    const capituloId = match[2];
+    const versiculosRaw = match[3].trim();
+
+    const normalizedLivro = livroNomeRaw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    const livroSlug = bookSlugMap[normalizedLivro] || normalizedLivro;
+
+    let versiculosQuery = versiculosRaw;
+    const rangeMatch = versiculosRaw.match(/^(\d+)-(\d+)$/);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 10);
+      const end = parseInt(rangeMatch[2], 10);
+      if (!isNaN(start) && !isNaN(end) && start < end) {
+        const arr = [];
+        for (let v = start; v <= end; v++) {
+          arr.push(v);
+        }
+        versiculosQuery = arr.join(',');
+      }
+    } else {
+      versiculosQuery = versiculosRaw.replace(/\s+/g, '');
+    }
+
+    router.push({
+      pathname: '/biblia/[livro]/capitulo/[id]',
+      params: {
+        livro: livroSlug,
+        id: capituloId,
+        paragraph: versiculosQuery,
+      },
+    } as any);
+  }, [router]);
+
 
 
   // Navegação entre capítulos
@@ -626,10 +686,17 @@ export default function ChapterScreen() {
                                   <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Leitura Bíblica</Text>
                                 </View>
                                 {mystery.leitura_biblica?.referencia ? (
-                                  <View style={[styles.mysteryRefBadge, { backgroundColor: colors.primary + '15' }]}>
+                                  <Pressable
+                                    onPress={() => handleNavigateToBible(mystery.leitura_biblica.referencia)}
+                                    style={({ pressed }) => [
+                                      styles.mysteryRefBadge,
+                                      { backgroundColor: colors.primary + '15' },
+                                      pressed && { opacity: 0.7 }
+                                    ]}
+                                  >
                                     <Ionicons name="bookmark-outline" size={14} color={colors.primary} />
-                                    <Text style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
-                                  </View>
+                                    <Text numberOfLines={1} style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
+                                  </Pressable>
                                 ) : null}
                                 {mystery.leitura_biblica?.texto ? (
                                   <Text style={[styles.mysteryReadingText, { color: colors.text }]}>
@@ -982,6 +1049,7 @@ const styles = StyleSheet.create({
     ...typography.small,
     fontWeight: '600',
     fontStyle: 'italic',
+    flexShrink: 0,
   },
   mysteryReadingText: {
     ...typography.body,

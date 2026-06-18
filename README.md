@@ -15,7 +15,8 @@ Bem-vindo ao **AppCatolico**, uma aplicação móvel completa desenvolvida para 
 
 ### 📅 Liturgia e Meditação
 - **Liturgia Diária:** Acompanhe as leituras da missa do dia.
-- **Meditação Diária:** Reflexões para auxiliar na oração pessoal.
+- **Meditação Diária:** Reflexões para auxiliar na oração pessoal, obtidas de uma **API externa** hospedada no Render.
+- **Curiosidades Católicas:** Fatos fascinantes sobre a história e doutrina da Igreja, também obtidos da API externa.
 
 ### ⭐ Favoritos e Personalização
 - **Sistema de Favoritos:** Salve seus versículos e parágrafos preferidos.
@@ -54,19 +55,19 @@ AppCatolico/
 │   ├── _layout.tsx         # Layout raiz e providers
 │   └── ...
 ├── components/             # Componentes Reutilizáveis
-│   ├── ui/                 # Componentes de interface básicos
 │   ├── BookCard.tsx        # Card de exibição de livros
 │   ├── ChapterCard.tsx     # Card de seleção de capítulos
 │   └── ...
-├── constants/              # Constantes globais (Cores, Temas)
 ├── data/                   # Dados estáticos (JSONs da Bíblia e Livros)
-├── hooks/                  # Custom Hooks (useTheme, useFavoritesSync, etc.)
 ├── lib/                    # Lógica de negócios e utilitários
 │   ├── theme/              # Contexto e tokens de tema
 │   ├── sync/               # Serviços de sincronização
 │   └── ...
+├── scripts/                # Scripts utilitários
 └── assets/                 # Imagens e ícones
 ```
+
+> **Nota:** As meditações do Evangelho e as curiosidades católicas são servidas por uma API externa (Python/FastAPI) hospedada no Render. Consulte o arquivo [`API_CATOLICA.md`](API_CATOLICA.md) para a documentação completa dessa API.
 
 ## 🏁 Como Rodar o Projeto
 
@@ -75,12 +76,18 @@ AppCatolico/
    npm install
    ```
 
-2. **Inicie o servidor de desenvolvimento:**
+2. **Configure a variável de ambiente:**
+   Copie o arquivo `.env.example` para `.env` e ajuste a URL da API:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Inicie o servidor de desenvolvimento:**
    ```bash
    npx expo start
    ```
 
-3. **Execute no dispositivo:**
+4. **Execute no dispositivo:**
    - Use o aplicativo **Expo Go** no seu celular (Android ou iOS) para escanear o QR Code.
    - Ou pressione `a` para abrir no emulador Android, ou `i` para o simulador iOS.
 

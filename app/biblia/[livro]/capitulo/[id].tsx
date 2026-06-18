@@ -171,30 +171,36 @@ export default function CapituloBibliaScreen() {
         const index = capitulo.versiculos.findIndex((v: Versiculo) => v.versiculo === paragraphs[0]);
         
         if (index !== -1) {
-          // Pequeno delay para garantir que a lista renderizou
+          // Destacar o versículo imediatamente na renderização
+          setSelectedVersiculos(paragraphs);
+          setIsDeepLinking(true);
+          highlightOpacity.setValue(1);
+
+          // Pequeno delay para permitir o scroll suave após a montagem/render
           timers.push(setTimeout(() => {
-            flatListRef.current?.scrollToIndex({ 
-              index, 
-              animated: true,
-              viewPosition: 0.3 
+            if (flatListRef.current) {
+              try {
+                flatListRef.current.scrollToIndex({ 
+                  index, 
+                  animated: true,
+                  viewPosition: 0.3 
+                });
+              } catch (e) {
+                console.warn('Scroll fail on initial load', e);
+              }
+            }
+          }, 100));
+          
+          // Animação de fade-out do piscar após a rolagem se acomodar
+          timers.push(setTimeout(() => {
+            RNAnimated.timing(highlightOpacity, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: true,
+            }).start(() => {
+              setIsDeepLinking(false);
             });
-            
-            setSelectedVersiculos(paragraphs);
-            setIsDeepLinking(true);
-            highlightOpacity.setValue(1);
-            
-            timers.push(setTimeout(() => {
-              RNAnimated.timing(highlightOpacity, {
-                toValue: 0,
-                duration: 500,
-                useNativeDriver: true,
-              }).start(() => {
-                // Não limpar seleção se for deep link de favoritos
-                // setSelectedVersiculos([]); 
-                setIsDeepLinking(false);
-              });
-            }, 1000));
-          }, 500));
+          }, 1200));
         }
       }
     }
@@ -445,6 +451,11 @@ export default function CapituloBibliaScreen() {
         ref={flatListRef}
         data={capitulo.versiculos}
         keyExtractor={(item) => item.versiculo.toString()}
+        getItemLayout={(data, index) => ({
+          length: 85,
+          offset: 85 * index,
+          index,
+        })}
         renderItem={({ item }) => {
           const selected = selectedVersiculos.includes(item.versiculo);
           const favorito = favorites.some(

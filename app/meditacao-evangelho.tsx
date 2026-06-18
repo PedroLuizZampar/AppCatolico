@@ -6,10 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
-  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -272,39 +270,8 @@ const renderMarkdownInPage = (markdown: string, colors: any, isDark: boolean) =>
   return elements;
 };
 
-// URL base do seu servidor Vercel. Substitua pelo seu domínio real se necessário.
-const API_BASE_URL = 'https://appcatolico.vercel.app'; 
-
-const getApiUrl = (endpoint: string) => {
-  // 1. Se houver uma URL explicitamente configurada nas variáveis do Expo
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return `${process.env.EXPO_PUBLIC_API_URL}${endpoint}`;
-  }
-
-  // 2. Se for web no navegador
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return `http://localhost:3000${endpoint}`;
-    }
-    return endpoint;
-  }
-
-  // 3. Se estiver em desenvolvimento local no celular (Expo Go)
-  if (__DEV__) {
-    // Tenta obter o IP do host Metro Bundler de forma dinâmica
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      return `http://${ip}:3000${endpoint}`;
-    }
-    // Fallback padrão para emuladores
-    return Platform.OS === 'android' 
-      ? `http://10.0.2.2:3000${endpoint}` 
-      : `http://localhost:3000${endpoint}`;
-  }
-
-  return `${API_BASE_URL}${endpoint}`;
-};
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-sanctus.onrender.com';
+const getApiUrl = (endpoint: string) => `${API_BASE_URL}${endpoint}`;
 
 export default function MeditacaoEvangelhoScreen() {
   const { isDark } = useTheme();
@@ -325,7 +292,7 @@ export default function MeditacaoEvangelhoScreen() {
     setError(null);
 
     try {
-      const url = getApiUrl('/api/meditacao-evangelho');
+      const url = getApiUrl('/api/v1/meditacao');
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Erro na API: ${response.status}`);

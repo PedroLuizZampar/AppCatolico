@@ -72,7 +72,7 @@ export default function HomeScreen() {
       color: '#795548', // Marrom
       route: '/livros',
       library: 'MaterialCommunityIcons',
-      },
+    },
     {
       title: 'Frases de Santos',
       subtitle: 'Pensamentos',
@@ -101,7 +101,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
@@ -110,7 +110,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Cabeçalho simplificado com data e favorito */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.duration(400).delay(100)}
           style={styles.header}
         >
@@ -118,10 +118,10 @@ export default function HomeScreen() {
             <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
             <Text style={[styles.dateText, { color: colors.textSecondary }]}>{formattedDate}</Text>
           </View>
-          <Pressable 
-            style={[styles.iconButton, { 
+          <Pressable
+            style={[styles.iconButton, {
               backgroundColor: colors.surface,
-              borderColor: colors.border 
+              borderColor: colors.border
             }]}
             onPress={() => router.push('/favoritos')}
           >
@@ -148,7 +148,7 @@ export default function HomeScreen() {
               <View style={styles.meditationText}>
                 <Text style={styles.meditationTitle}>Meditação Rápida</Text>
                 <Text style={styles.meditationSubtitle}>
-                  Um ponto de reflexão diária de São Josemaria Escrivá para o seu dia.
+                  Um ponto de São Josemaria Escrivá ou uma frase de santo para inspirar o seu dia.
                 </Text>
               </View>
               <View style={styles.meditationArrow}>
@@ -161,8 +161,8 @@ export default function HomeScreen() {
         {/* Grid de Funcionalidades */}
         <View style={styles.gridContainer}>
           {menuItems.map((item, index) => (
-            <Animated.View 
-              key={item.title} 
+            <Animated.View
+              key={item.title}
               entering={FadeInDown.duration(400).delay(250 + index * 50)}
               style={styles.gridItem}
             >
