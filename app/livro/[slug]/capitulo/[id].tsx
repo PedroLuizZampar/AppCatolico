@@ -597,7 +597,7 @@ export default function ChapterScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyParagraphs}>
-                <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                <Ionicons name="copy" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteParagraphs}>
@@ -605,7 +605,7 @@ export default function ChapterScreen() {
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareParagraphs}>
-                <Ionicons name="share-outline" size={18} color={colors.primary} />
+                <Ionicons name="share" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>
@@ -665,7 +665,7 @@ export default function ChapterScreen() {
                       {/* Seção: Meditação */}
                       <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <View style={styles.mysterySectionHeader}>
-                          <Ionicons name="book-outline" size={18} color={colors.primary} />
+                          <Ionicons name="book" size={18} color={colors.primary} />
                           <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Meditação</Text>
                         </View>
                         <Text style={[styles.misterioText, { color: colors.text }]}>
@@ -694,7 +694,7 @@ export default function ChapterScreen() {
                                       pressed && { opacity: 0.7 }
                                     ]}
                                   >
-                                    <Ionicons name="bookmark-outline" size={14} color={colors.primary} />
+                                    <Ionicons name="bookmark" size={14} color={colors.primary} />
                                     <Text numberOfLines={1} style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
                                   </Pressable>
                                 ) : null}
@@ -760,7 +760,7 @@ export default function ChapterScreen() {
                   ) : isContemplacao ? (
                     <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Ionicons name="book-outline" size={18} color={colors.primary} />
+                        <Ionicons name="book" size={18} color={colors.primary} />
                         <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Contemplação</Text>
                       </View>
                       <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
@@ -796,7 +796,7 @@ export default function ChapterScreen() {
                   })() : isCantico ? (
                     <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Ionicons name="musical-notes-outline" size={18} color={colors.primary} />
+                        <Ionicons name="musical-notes" size={18} color={colors.primary} />
                         <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Cântico</Text>
                       </View>
                       <Text style={[styles.viaSacraCanticoText, { color: colors.text }]}>

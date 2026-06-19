@@ -542,21 +542,21 @@ const CalendarModal: React.FC<CalendarModalProps> = ({
               style={[styles.quickSelectButton, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
               onPress={() => handleQuickSelect(new Date())}
             >
-              <Ionicons name="today-outline" size={18} color={colors.primary} />
+              <Ionicons name="today" size={18} color={colors.primary} />
               <Text style={[styles.quickSelectText, { color: colors.primary }]}>Hoje</Text>
             </Pressable>
             <Pressable 
               style={[styles.quickSelectButton, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
               onPress={() => handleQuickSelect(tomorrow)}
             >
-              <Ionicons name="sunny-outline" size={18} color={colors.text} />
+              <Ionicons name="sunny" size={18} color={colors.text} />
               <Text style={[styles.quickSelectText, { color: colors.text }]}>Amanhã</Text>
             </Pressable>
             <Pressable 
               style={[styles.quickSelectButton, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
               onPress={() => handleQuickSelect(nextSunday)}
             >
-              <Ionicons name="medal-outline" size={18} color={colors.text} />
+              <Ionicons name="medal" size={18} color={colors.text} />
               <Text style={[styles.quickSelectText, { color: colors.text }]}>Domingo</Text>
             </Pressable>
           </View>
@@ -782,7 +782,7 @@ export default function LiturgiaScreen() {
   if (error || !liturgy) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle-outline" size={64} color={colors.textSecondary} />
+        <Ionicons name="alert-circle" size={64} color={colors.textSecondary} />
         <Text style={[styles.errorTitle, { color: colors.text }]}>
           Erro ao carregar liturgia
         </Text>
@@ -835,7 +835,7 @@ export default function LiturgiaScreen() {
               { backgroundColor: liturgyColor, borderColor: colors.border }
             ]} 
           />
-          <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+          <Ionicons name="calendar" size={16} color={colors.textSecondary} />
           <Text style={[styles.dateText, { color: colors.textSecondary }]}>
             {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
           </Text>

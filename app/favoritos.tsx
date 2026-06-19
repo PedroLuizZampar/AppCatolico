@@ -217,7 +217,7 @@ export default function FavoritesScreen() {
           headerRight: () => (
             favorites.length > 0 ? (
               <Pressable onPress={handleClearAll} hitSlop={10}>
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Ionicons name="trash" size={20} color={colors.error} />
               </Pressable>
             ) : null
           ),
@@ -316,7 +316,7 @@ export default function FavoritesScreen() {
             entering={FadeInDown.duration(400)}
             style={styles.emptyState}
           >
-            <Ionicons name="heart-outline" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
+            <Ionicons name="heart" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Nenhum favorito</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Seus trechos favoritos aparecerão aqui

@@ -57,7 +57,7 @@ export default function TabLayout() {
           title: 'Início',
           headerTitle: 'Sanctus',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
@@ -77,7 +77,17 @@ export default function TabLayout() {
           title: 'Liturgia',
           headerTitle: 'Liturgia Diária',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <Ionicons name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Magisterium',
+          headerTitle: 'Magisterium AI',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="comment-question" size={size} color={color} />
           ),
         }}
       />

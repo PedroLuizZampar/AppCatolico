@@ -33,7 +33,7 @@ export default function LivrosScreen() {
               }]}
               onPress={() => router.push('/favoritos')}
             >
-              <Ionicons name="heart-outline" size={20} color={colors.text} />
+              <Ionicons name="heart" size={20} color={colors.text} />
             </Pressable>
           )
         }}

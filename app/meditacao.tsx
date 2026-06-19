@@ -251,7 +251,7 @@ export default function MeditacaoScreen() {
             {isSharing ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Ionicons name="share-social-outline" size={24} color={colors.text} />
+              <Ionicons name="share-social" size={24} color={colors.text} />
             )}
             <Text style={[styles.actionText, { color: colors.text }]}>Compartilhar</Text>
           </Pressable>

@@ -364,7 +364,7 @@ export default function MeditacaoEvangelhoScreen() {
           style={styles.header}
         >
           <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="comment-text-multiple-outline" size={36} color="#9C27B0" />
+            <MaterialCommunityIcons name="comment-text-multiple" size={36} color="#9C27B0" />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Evangelho Meditado</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Reflexão Diária</Text>
@@ -384,7 +384,7 @@ export default function MeditacaoEvangelhoScreen() {
 
         {error && !meditation && !loading && (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
+            <Ionicons name="alert-circle" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
             <Text style={[styles.errorTitle, { color: colors.text, textAlign: 'center', marginBottom: spacing.md }]}>Erro ao obter meditação</Text>
             <Text style={[styles.errorText, { color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }]}>{error}</Text>
             <Pressable

@@ -18,6 +18,12 @@ Bem-vindo ao **AppCatolico**, uma aplicação móvel completa desenvolvida para 
 - **Meditação Diária:** Reflexões para auxiliar na oração pessoal, obtidas de uma **API externa** hospedada no Render.
 - **Curiosidades Católicas:** Fatos fascinantes sobre a história e doutrina da Igreja, também obtidos da API externa.
 
+### 🤖 Assistente Católico (Magisterium AI)
+- **Chat Inteligente:** Converse com uma inteligência artificial treinada na doutrina, Bíblia e tradição católica.
+- **Citações Teológicas Interativas:** Respostas embasadas com marcadores bibliográficos inline (ex: `[1]`, `[2]`) que abrem modais informando o trecho literal citado e sua fonte oficial (ex: *Catecismo*, *Evangelium Vitae*, *Bíblia*).
+- **Perguntas Recomendadas:** Sugestões teológicas dinâmicas ("pills") para reter o usuário no fluxo de aprendizado.
+- **Persistência de Conversas:** Histórico de chat salvo localmente via `AsyncStorage` com a possibilidade de limpeza rápida.
+
 ### ⭐ Favoritos e Personalização
 - **Sistema de Favoritos:** Salve seus versículos e parágrafos preferidos.
 - **Deep Linking:** Ao clicar em um favorito, o app abre diretamente no livro e capítulo correspondente, rolando automaticamente para o trecho e destacando-o.
@@ -42,14 +48,17 @@ Este projeto foi construído com as tecnologias mais modernas do ecossistema Rea
   - `react-native-gesture-handler` (Gestos)
   - `react-native-safe-area-context`
   - `@expo/vector-icons`
-- **Armazenamento Local:** `AsyncStorage` (para persistência de favoritos e configurações)
+- **IA Teológica:** Integração com a API do [Magisterium AI](https://www.magisterium.com/) (modelo `magisterium-1`)
+- **Armazenamento Local:** `AsyncStorage` (para persistência de favoritos, configurações e histórico de chat)
 
 ## 📂 Estrutura do Projeto
 
 ```
 AppCatolico/
 ├── app/                    # Rotas e Telas (Expo Router)
-│   ├── (tabs)/             # Navegação principal (Abas: Livros, Bíblia, Liturgia, Config)
+│   ├── (tabs)/             # Navegação principal (Abas: Início, Bíblia, Liturgia, Assistente)
+│   │   ├── chat.tsx        # Tela do Assistente Católico (Magisterium AI)
+│   │   └── ...
 │   ├── biblia/             # Rotas dinâmicas da Bíblia
 │   ├── livro/              # Rotas dinâmicas dos Livros
 │   ├── _layout.tsx         # Layout raiz e providers
@@ -61,6 +70,10 @@ AppCatolico/
 ├── data/                   # Dados estáticos (JSONs da Bíblia e Livros)
 ├── lib/                    # Lógica de negócios e utilitários
 │   ├── theme/              # Contexto e tokens de tema
+│   ├── services/           # Serviços e integrações de API
+│   │   └── magisteriumService.ts # Conexão com Magisterium AI
+│   ├── types/              # Tipagens do TypeScript
+│   │   └── magisterium.ts  # Contratos de tipos da IA
 │   ├── sync/               # Serviços de sincronização
 │   └── ...
 ├── scripts/                # Scripts utilitários
@@ -76,11 +89,14 @@ AppCatolico/
    npm install
    ```
 
-2. **Configure a variável de ambiente:**
-   Copie o arquivo `.env.example` para `.env` e ajuste a URL da API:
+2. **Configure as variáveis de ambiente:**
+   Copie o arquivo `.env.example` para `.env` e ajuste a URL da API e a chave do Magisterium AI:
    ```bash
    cp .env.example .env
    ```
+   Preencha as variáveis no arquivo `.env`:
+   - `EXPO_PUBLIC_API_URL=https://api-sanctus.onrender.com`
+   - `EXPO_PUBLIC_MAGISTERIUM_API_KEY=sua_chave_do_magisterium_aqui`
 
 3. **Inicie o servidor de desenvolvimento:**
    ```bash

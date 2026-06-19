@@ -57,13 +57,13 @@ export default function LivroBibliaScreen() {
 
           <View style={styles.statsRow}>
             <View style={styles.statBadge}>
-              <Ionicons name="book-outline" size={16} color={colors.primary} />
+              <Ionicons name="book" size={16} color={colors.primary} />
               <Text style={[styles.statText, { color: colors.textSecondary }]}>
                 {livro.capitulos.length} capítulos
               </Text>
             </View>
             <View style={styles.statBadge}>
-              <Ionicons name="list-outline" size={16} color={colors.primary} />
+              <Ionicons name="list" size={16} color={colors.primary} />
               <Text style={[styles.statText, { color: colors.textSecondary }]}>
                 {totalVersiculos} versículos
               </Text>

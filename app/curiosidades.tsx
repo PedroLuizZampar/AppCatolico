@@ -365,7 +365,7 @@ export default function CuriosidadesScreen() {
           style={styles.header}
         >
           <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={36} color="#FF9800" />
+            <MaterialCommunityIcons name="lightbulb-on" size={36} color="#FF9800" />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Curiosidade Diária</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Fatos e Doutrina</Text>
@@ -385,7 +385,7 @@ export default function CuriosidadesScreen() {
 
         {error && !curiosities && !loading && (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
+            <Ionicons name="alert-circle" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
             <Text style={[styles.errorTitle, { color: colors.text, textAlign: 'center', marginBottom: spacing.md }]}>Erro ao obter curiosidades</Text>
             <Text style={[styles.errorText, { color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }]}>{error}</Text>
             <Pressable

@@ -28,7 +28,7 @@ export default function HomeScreen() {
     {
       title: 'Liturgia Diária',
       subtitle: 'Leituras do dia',
-      icon: 'calendar-outline', // Ícone de calendário com linhas de texto
+      icon: 'calendar', // Ícone de calendário com linhas de texto
       color: '#4CAF50', // Verde
       route: '/liturgia',
       library: 'Ionicons',
@@ -52,7 +52,7 @@ export default function HomeScreen() {
     {
       title: 'Curiosidade Diária',
       subtitle: 'Fatos e Doutrina',
-      icon: 'lightbulb-on-outline', // Lâmpada acesa estilizada
+      icon: 'lightbulb-on', // Lâmpada acesa estilizada
       color: '#FF9800', // Laranja
       route: '/curiosidades',
       library: 'MaterialCommunityIcons',
@@ -97,6 +97,14 @@ export default function HomeScreen() {
       route: '/livro/via-sacra',
       library: 'MaterialCommunityIcons',
     },
+    {
+      title: 'Magisterium',
+      subtitle: 'IA de Doutrina e Magistério',
+      icon: 'comment-question',
+      color: '#4A7BA7',
+      route: '/chat',
+      library: 'MaterialCommunityIcons',
+    },
   ];
 
   return (
@@ -115,7 +123,7 @@ export default function HomeScreen() {
           style={styles.header}
         >
           <View style={styles.dateContainer}>
-            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+            <Ionicons name="calendar" size={16} color={colors.textSecondary} />
             <Text style={[styles.dateText, { color: colors.textSecondary }]}>{formattedDate}</Text>
           </View>
           <Pressable
@@ -125,7 +133,7 @@ export default function HomeScreen() {
             }]}
             onPress={() => router.push('/favoritos')}
           >
-            <Ionicons name="heart-outline" size={20} color={colors.text} />
+            <Ionicons name="heart" size={20} color={colors.textSecondary} />
           </Pressable>
         </Animated.View>
 
@@ -143,7 +151,7 @@ export default function HomeScreen() {
           >
             <View style={styles.meditationContent}>
               <View style={styles.meditationIcon}>
-                <MaterialCommunityIcons name="comment-text-outline" size={24} color="#fff" />
+                <MaterialCommunityIcons name="comment-text" size={24} color="#fff" />
               </View>
               <View style={styles.meditationText}>
                 <Text style={styles.meditationTitle}>Meditação Rápida</Text>

@@ -93,7 +93,7 @@ export default function BibliaScreen() {
         style={styles.searchContainer}
       >
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
             placeholder="Buscar livro ou versículo..."

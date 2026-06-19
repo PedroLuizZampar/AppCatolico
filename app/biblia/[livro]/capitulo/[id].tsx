@@ -161,8 +161,6 @@ export default function CapituloBibliaScreen() {
 
   // Scroll até o versículo específico (deep link ou busca)
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
     if (paragraph && capitulo) {
       const paragraphs = paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n));
       
@@ -171,42 +169,40 @@ export default function CapituloBibliaScreen() {
         const index = capitulo.versiculos.findIndex((v: Versiculo) => v.versiculo === paragraphs[0]);
         
         if (index !== -1) {
-          // Destacar o versículo imediatamente na renderização
-          setSelectedVersiculos(paragraphs);
-          setIsDeepLinking(true);
-          highlightOpacity.setValue(1);
-
-          // Pequeno delay para permitir o scroll suave após a montagem/render
-          timers.push(setTimeout(() => {
+          // Tentar scrollar imediatamente se possível, ou aguardar
+          const tryScroll = (attempts = 0) => {
             if (flatListRef.current) {
-              try {
-                flatListRef.current.scrollToIndex({ 
-                  index, 
-                  animated: true,
-                  viewPosition: 0.3 
+              flatListRef.current.scrollToIndex({ 
+                index, 
+                animated: true,
+                viewPosition: 0.3 
+              });
+              
+              // Aplicar highlight
+              setSelectedVersiculos(paragraphs);
+              setIsDeepLinking(true);
+              highlightOpacity.setValue(1);
+              
+              setTimeout(() => {
+                RNAnimated.timing(highlightOpacity, {
+                  toValue: 0,
+                  duration: 500,
+                  useNativeDriver: true,
+                }).start(() => {
+                  setIsDeepLinking(false);
                 });
-              } catch (e) {
-                console.warn('Scroll fail on initial load', e);
-              }
+              }, 1500);
+            } else if (attempts < 5) {
+              // Se a ref não estiver pronta, tentar novamente em breve
+              setTimeout(() => tryScroll(attempts + 1), 200);
             }
-          }, 100));
-          
-          // Animação de fade-out do piscar após a rolagem se acomodar
-          timers.push(setTimeout(() => {
-            RNAnimated.timing(highlightOpacity, {
-              toValue: 0,
-              duration: 500,
-              useNativeDriver: true,
-            }).start(() => {
-              setIsDeepLinking(false);
-            });
-          }, 1200));
+          };
+
+          // Pequeno delay inicial para garantir montagem
+          setTimeout(() => tryScroll(), 500);
         }
       }
     }
-    return () => {
-      for (const t of timers) clearTimeout(t);
-    };
   }, [paragraph, currentChapterId, capitulo, highlightOpacity]);
 
   const handleCloseMenu = useCallback(() => {
@@ -430,7 +426,7 @@ export default function CapituloBibliaScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyVersiculos}>
-                <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                <Ionicons name="copy" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteVersiculos}>
@@ -438,7 +434,7 @@ export default function CapituloBibliaScreen() {
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareVersiculos}>
-                <Ionicons name="share-outline" size={18} color={colors.primary} />
+                <Ionicons name="share" size={18} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>
@@ -451,11 +447,6 @@ export default function CapituloBibliaScreen() {
         ref={flatListRef}
         data={capitulo.versiculos}
         keyExtractor={(item) => item.versiculo.toString()}
-        getItemLayout={(data, index) => ({
-          length: 85,
-          offset: 85 * index,
-          index,
-        })}
         renderItem={({ item }) => {
           const selected = selectedVersiculos.includes(item.versiculo);
           const favorito = favorites.some(
@@ -485,6 +476,9 @@ export default function CapituloBibliaScreen() {
         maxToRenderPerBatch={20}
         windowSize={10}
         onScrollToIndexFailed={(info) => {
+          // Fallback confiável para listas com altura variável
+          // 1) aproxima com scrollToOffset usando o tamanho médio
+          // 2) re-tenta o scrollToIndex depois que mais itens forem medidos
           const approximateOffset = info.averageItemLength * info.index;
           flatListRef.current?.scrollToOffset({ offset: approximateOffset, animated: true });
 

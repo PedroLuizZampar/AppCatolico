@@ -41,7 +41,7 @@ export default function SearchScreen() {
             entering={FadeInDown.duration(400)}
             style={styles.emptyState}
           >
-            <Ionicons name="search-outline" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
+            <Ionicons name="search" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Buscar reflexões</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Digite algo para buscar em todos os livros de São Josemaria Escrivá
@@ -52,7 +52,7 @@ export default function SearchScreen() {
             entering={FadeInDown.duration(400)}
             style={styles.emptyState}
           >
-            <Ionicons name="book-outline" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
+            <Ionicons name="book" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Nenhum resultado</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Tente buscar com outras palavras

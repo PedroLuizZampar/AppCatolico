@@ -165,7 +165,7 @@ export default function SantoScreen() {
   if (error) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle-outline" size={64} color={colors.textSecondary} />
+        <Ionicons name="alert-circle" size={64} color={colors.textSecondary} />
         <Text style={[styles.errorTitle, { color: colors.text }]}>
           Erro ao carregar Santo do Dia
         </Text>
@@ -199,7 +199,7 @@ export default function SantoScreen() {
             {today?.title || 'Santo do Dia'}
           </Text>
           <View style={styles.dateButton}>
-            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+            <Ionicons name="calendar" size={16} color={colors.textSecondary} />
             <Text style={[styles.dateText, { color: colors.textSecondary }]}>
               {capitalizeWordsExceptDe(
                 formatSantoDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel

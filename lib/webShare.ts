@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform, Share } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
+import { toastService } from './toastService';
 
 /**
  * Copia texto para a clipboard, com fallback web via navigator.clipboard.
@@ -69,9 +70,5 @@ export async function shareText(text: string): Promise<void> {
  * Exibe notificação de sucesso, compatível com web e nativo.
  */
 export function showNotification(message: string, title?: string): void {
-  if (Platform.OS === 'web') {
-    window.alert(title ? `${title}\n${message}` : message);
-  } else {
-    Alert.alert(title ?? '', message);
-  }
+  toastService.show(message);
 }
