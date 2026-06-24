@@ -41,3 +41,18 @@ export interface MagisteriumResponse {
   citations?: Citation[];
   related_questions?: string[];
 }
+
+export interface MessageUI extends Message {
+  id: string;
+  citations?: Citation[];
+  related_questions?: string[];
+}
+
+export interface MagisteriumChat {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: MessageUI[];
+}
+

@@ -1,28 +1,27 @@
 import { MeditationShareCard } from '@/components/MeditationShareCard';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, Animated as RNAnimated, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { HighlightableText, HighlightCoverage } from '@/components/HighlightableText';
+import { HIGHLIGHT_COLORS, HighlightColorPanel } from '@/components/HighlightColorPanel';
 import { getCapituloBiblia, getLivroBiblicoBySlug } from '@/lib/bibliaData';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { useHighlights } from '@/lib/hooks/useHighlights';
+import { resolveHighlightConflicts } from '@/lib/highlightResolver';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
-import { FavoriteParagraph, Versiculo } from '@/lib/types';
+import { FavoriteParagraph, TextHighlight, Versiculo } from '@/lib/types';
 import { copyToClipboard, shareAsImage, shareText, showNotification } from '@/lib/webShare';
 
-// Componente memoizado para cada versículo
-const VersiculoItem = React.memo<{
-  versiculo: Versiculo;
-  selected: boolean;
-  favorito: boolean;
-  colors: any;
-  onPress: () => void;
-  onLongPress: () => void;
-  highlightOpacity?: RNAnimated.Value;
-}>(({
+const EMPTY_HIGHLIGHTS: TextHighlight[] = [];
+const EMPTY_COVERAGES: HighlightCoverage[] = [];
+
+// Componente para cada versículo (lógica e renderização)
+const VersiculoItemComponent = ({
   versiculo,
   selected,
   favorito,
@@ -30,20 +29,58 @@ const VersiculoItem = React.memo<{
   onPress,
   onLongPress,
   highlightOpacity,
+  coverages,
+  isHighlightMode,
+  isEraseMode,
+  selectedColor,
+  isDark,
+  pendingStartWord,
+  pendingCrossFullCoverage,
+  onWordTap,
+  onRemoveHighlight,
+}: {
+  versiculo: Versiculo;
+  selected: boolean;
+  favorito: boolean;
+  colors: any;
+  onPress: (versiculoNum: number) => void;
+  onLongPress: (versiculoNum: number) => void;
+  highlightOpacity?: RNAnimated.Value;
+  coverages: HighlightCoverage[];
+  isHighlightMode: boolean;
+  isEraseMode: boolean;
+  selectedColor: string;
+  isDark: boolean;
+  pendingStartWord?: number;
+  pendingCrossFullCoverage?: boolean;
+  onWordTap: (paragraphNumber: number, wordIndex: number) => void;
+  onRemoveHighlight: (highlightId: string) => void;
 }) => {
-  const backgroundOpacity = highlightOpacity || new RNAnimated.Value(selected ? 1 : 0);
-  
+  const fallbackOpacity = useRef(new RNAnimated.Value(0)).current;
+  if (!highlightOpacity) {
+    fallbackOpacity.setValue(selected ? 1 : 0);
+  }
+  const backgroundOpacity = highlightOpacity || fallbackOpacity;
+
+  const handlePress = useCallback(() => {
+    onPress(versiculo.versiculo);
+  }, [onPress, versiculo.versiculo]);
+
+  const handleLongPress = useCallback(() => {
+    onLongPress(versiculo.versiculo);
+  }, [onLongPress, versiculo.versiculo]);
+
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={isHighlightMode ? undefined : handlePress}
+      onLongPress={isHighlightMode ? undefined : handleLongPress}
       delayLongPress={300}
       style={[
         styles.versiculoContainer,
         favorito && styles.versiculoFavorito,
       ]}
     >
-      {selected && (
+      {selected && !isHighlightMode && (
         <RNAnimated.View
           style={[
             StyleSheet.absoluteFillObject,
@@ -63,22 +100,81 @@ const VersiculoItem = React.memo<{
           {versiculo.versiculo}
         </Text>
         <View style={styles.versiculoTextContainer}>
-          <Text style={[styles.versiculoTexto, { color: colors.text }]}>
-            {versiculo.texto}
-          </Text>
+          {isHighlightMode || coverages.length > 0 ? (
+            <HighlightableText
+              text={versiculo.texto}
+              coverages={coverages}
+              isHighlightMode={isHighlightMode}
+              isEraseMode={isEraseMode}
+              selectedColor={selectedColor}
+              isDark={isDark}
+              paragraphNumber={versiculo.versiculo}
+              pendingStartWord={pendingStartWord}
+              pendingCrossFullCoverage={pendingCrossFullCoverage}
+              onWordTap={onWordTap}
+              onRemoveHighlight={onRemoveHighlight}
+              textStyle={[styles.versiculoTexto, { color: colors.text }]}
+            />
+          ) : (
+            <Text style={[styles.versiculoTexto, { color: colors.text }]}>
+              {versiculo.texto}
+            </Text>
+          )}
         </View>
       </View>
       {favorito && (
-        <Ionicons 
-          name="heart" 
-          size={14} 
-          color={colors.error} 
+        <Ionicons
+          name="heart"
+          size={14}
+          color={colors.error}
           style={styles.favoriteIcon}
         />
       )}
     </Pressable>
   );
-});
+};
+
+const areHighlightsEqual = (arr1: HighlightCoverage[], arr2: HighlightCoverage[]) => {
+  if (arr1 === arr2) return true;
+  if (arr1.length !== arr2.length) return false;
+  for (let i = 0; i < arr1.length; i++) {
+    const c1 = arr1[i];
+    const c2 = arr2[i];
+    if (
+      c1.highlight.id !== c2.highlight.id ||
+      c1.highlight.color !== c2.highlight.color ||
+      c1.type !== c2.type ||
+      c1.startWord !== c2.startWord ||
+      c1.endWord !== c2.endWord
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const arePropsEqual = (prevProps: any, nextProps: any) => {
+  if (prevProps.versiculo !== nextProps.versiculo) return false;
+  if (prevProps.selected !== nextProps.selected) return false;
+  if (prevProps.favorito !== nextProps.favorito) return false;
+  if (prevProps.colors !== nextProps.colors) return false;
+  if (prevProps.highlightOpacity !== nextProps.highlightOpacity) return false;
+  if (prevProps.onPress !== nextProps.onPress) return false;
+  if (prevProps.onLongPress !== nextProps.onLongPress) return false;
+  if (!areHighlightsEqual(prevProps.coverages, nextProps.coverages)) return false;
+  if (prevProps.isHighlightMode !== nextProps.isHighlightMode) return false;
+  if (prevProps.isEraseMode !== nextProps.isEraseMode) return false;
+  if (prevProps.selectedColor !== nextProps.selectedColor) return false;
+  if (prevProps.isDark !== nextProps.isDark) return false;
+  if (prevProps.pendingStartWord !== nextProps.pendingStartWord) return false;
+  if (prevProps.pendingCrossFullCoverage !== nextProps.pendingCrossFullCoverage) return false;
+  if (prevProps.onWordTap !== nextProps.onWordTap) return false;
+  if (prevProps.onRemoveHighlight !== nextProps.onRemoveHighlight) return false;
+
+  return true;
+};
+
+const VersiculoItem = React.memo(VersiculoItemComponent, arePropsEqual);
 
 VersiculoItem.displayName = 'VersiculoItem';
 
@@ -87,16 +183,40 @@ export default function CapituloBibliaScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
-  
+
   const flatListRef = useRef<FlatList>(null);
   const shareCardRef = useRef<View>(null);
   const highlightOpacity = useRef(new RNAnimated.Value(0)).current;
   const { favorites, addFavorites, removeFavorites } = useFavoritesSync();
-  
+  const { highlights, removeHighlight, updateChapterHighlights } = useHighlights();
+
   const [selectedVersiculos, setSelectedVersiculos] = useState<number[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [longPressActive, setLongPressActive] = useState(false);
   const [isDeepLinking, setIsDeepLinking] = useState(false);
+  const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const [selectedHighlightColor, setSelectedHighlightColor] = useState(HIGHLIGHT_COLORS[0]);
+  const [isEraseMode, setIsEraseMode] = useState(false);
+  const [pendingHighlight, setPendingHighlight] = useState<{
+    paragraphNumber: number;
+    wordIndex: number;
+  } | null>(null);
+
+  // Refs mutáveis para valores usados em callbacks estáveis
+  const selectedVersiculosRef = useRef(selectedVersiculos);
+  selectedVersiculosRef.current = selectedVersiculos;
+  const longPressActiveRef = useRef(longPressActive);
+  longPressActiveRef.current = longPressActive;
+  const isHighlightModeRef = useRef(isHighlightMode);
+  isHighlightModeRef.current = isHighlightMode;
+  const selectedHighlightColorRef = useRef(selectedHighlightColor);
+  selectedHighlightColorRef.current = selectedHighlightColor;
+  const pendingHighlightRef = useRef(pendingHighlight);
+  pendingHighlightRef.current = pendingHighlight;
+
+
+
+
 
   // Gestos para o menu flutuante
   const translateX = useSharedValue(0);
@@ -128,10 +248,10 @@ export default function CapituloBibliaScreen() {
       translateY.value = withSpring(0);
     }
   }, [showMenu, translateX, translateY]);
-  
+
   // Converter ID para número
   const currentChapterId = parseInt(idStr || '1', 10);
-  
+
   // Carregar dados
   const livro = getLivroBiblicoBySlug(livroSlug);
   const capitulo = getCapituloBiblia(livroSlug, currentChapterId);
@@ -163,26 +283,26 @@ export default function CapituloBibliaScreen() {
   useEffect(() => {
     if (paragraph && capitulo) {
       const paragraphs = paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n));
-      
+
       if (paragraphs.length > 0) {
         // Encontrar o índice real do versículo na lista
         const index = capitulo.versiculos.findIndex((v: Versiculo) => v.versiculo === paragraphs[0]);
-        
+
         if (index !== -1) {
           // Tentar scrollar imediatamente se possível, ou aguardar
           const tryScroll = (attempts = 0) => {
             if (flatListRef.current) {
-              flatListRef.current.scrollToIndex({ 
-                index, 
+              flatListRef.current.scrollToIndex({
+                index,
                 animated: true,
-                viewPosition: 0.3 
+                viewPosition: 0.3
               });
-              
+
               // Aplicar highlight
               setSelectedVersiculos(paragraphs);
               setIsDeepLinking(true);
               highlightOpacity.setValue(1);
-              
+
               setTimeout(() => {
                 RNAnimated.timing(highlightOpacity, {
                   toValue: 0,
@@ -211,10 +331,189 @@ export default function CapituloBibliaScreen() {
     setLongPressActive(false);
   }, []);
 
+  // --- Highlight / Grifo ---
+  const favoritesSet = useMemo(() => {
+    const set = new Set<number>();
+    for (const fav of favorites) {
+      if (fav.bookSlug === livroSlug && fav.chapterId === currentChapterId) {
+        set.add(fav.paragraphNumber);
+      }
+    }
+    return set;
+  }, [favorites, livroSlug, currentChapterId]);
+
+  const targetParagraphs = useMemo(() => {
+    return paragraph ? paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n)) : [];
+  }, [paragraph]);
+
+  const coveragesByVerse = useMemo(() => {
+    if (!capitulo) return {};
+    const map: Record<number, HighlightCoverage[]> = {};
+    const chapterHighlights = highlights.filter(h => h.bookSlug === livroSlug && h.chapterId === currentChapterId);
+
+    for (const versiculo of capitulo.versiculos) {
+      const vNum = versiculo.versiculo;
+      const text = versiculo.texto;
+      const tokens = text.split(/(\s+)/);
+      const totalWords = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t)).length;
+
+      const coverages: HighlightCoverage[] = [];
+
+      for (const h of chapterHighlights) {
+        const startP = h.paragraphNumber;
+        const endP = h.endParagraphNumber ?? startP;
+
+        if (vNum < startP || vNum > endP) {
+          continue;
+        }
+
+        if (startP === endP) {
+          if (vNum === startP) {
+            coverages.push({
+              highlight: h,
+              type: 'partial',
+              startWord: h.startWordIndex,
+              endWord: h.endWordIndex,
+            });
+          }
+        } else {
+          if (vNum === startP) {
+            coverages.push({
+              highlight: h,
+              type: 'startOnly',
+              startWord: h.startWordIndex,
+              endWord: totalWords - 1,
+            });
+          } else if (vNum === endP) {
+            coverages.push({
+              highlight: h,
+              type: 'endOnly',
+              startWord: 0,
+              endWord: h.endWordIndexEnd ?? h.endWordIndex,
+            });
+          } else {
+            coverages.push({
+              highlight: h,
+              type: 'full',
+              startWord: 0,
+              endWord: totalWords - 1,
+            });
+          }
+        }
+      }
+
+      if (coverages.length > 0) {
+        map[vNum] = coverages;
+      }
+    }
+
+    return map;
+  }, [highlights, livroSlug, currentChapterId, capitulo]);
+
+  const createCrossParagraphHighlight = useCallback((
+    start: { paragraphNumber: number; wordIndex: number },
+    end: { paragraphNumber: number; wordIndex: number }
+  ) => {
+    if (!capitulo) return;
+
+    let pStart = start.paragraphNumber;
+    let wStart = start.wordIndex;
+    let pEnd = end.paragraphNumber;
+    let wEnd = end.wordIndex;
+
+    if (pStart > pEnd || (pStart === pEnd && wStart > wEnd)) {
+      pStart = end.paragraphNumber;
+      wStart = end.wordIndex;
+      pEnd = start.paragraphNumber;
+      wEnd = start.wordIndex;
+    }
+
+    let highlightedText = '';
+    
+    if (pStart === pEnd) {
+      const versiculo = capitulo.versiculos.find((v: Versiculo) => v.versiculo === pStart);
+      if (versiculo) {
+        const tokens = versiculo.texto.split(/(\s+)/);
+        const words = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t));
+        highlightedText = words.slice(wStart, wEnd + 1).join(' ');
+      }
+    } else {
+      const parts: string[] = [];
+      for (let pNum = pStart; pNum <= pEnd; pNum++) {
+        const versiculo = capitulo.versiculos.find((v: Versiculo) => v.versiculo === pNum);
+        if (!versiculo) continue;
+        const tokens = versiculo.texto.split(/(\s+)/);
+        const words = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t));
+        
+        if (pNum === pStart) {
+          parts.push(words.slice(wStart).join(' '));
+        } else if (pNum === pEnd) {
+          parts.push(words.slice(0, wEnd + 1).join(' '));
+        } else {
+          parts.push(words.join(' '));
+        }
+      }
+      highlightedText = parts.join(' \n ');
+    }
+
+    const newHighlight: TextHighlight = {
+      id: `${livroSlug}-${currentChapterId}-${pStart}-${Date.now()}`,
+      bookSlug: livroSlug,
+      chapterId: currentChapterId,
+      paragraphNumber: pStart,
+      startWordIndex: wStart,
+      endWordIndex: pStart === pEnd ? wEnd : wStart,
+      highlightedText,
+      color: selectedHighlightColorRef.current,
+      timestamp: Date.now(),
+      type: 'biblia',
+      endParagraphNumber: pEnd,
+      endWordIndexEnd: wEnd,
+    };
+
+    const chapterHighlights = highlights.filter(
+      h => h.bookSlug === livroSlug && h.chapterId === currentChapterId
+    );
+
+    const paragraphsInfo = capitulo.versiculos.map((v: Versiculo) => ({
+      number: v.versiculo,
+      text: v.texto,
+    }));
+
+    const resolved = resolveHighlightConflicts(chapterHighlights, newHighlight, paragraphsInfo);
+
+    updateChapterHighlights(livroSlug, currentChapterId, resolved);
+  }, [livroSlug, currentChapterId, capitulo, highlights, updateChapterHighlights]);
+
+  const handleWordTap = useCallback((versiculoNum: number, wordIndex: number) => {
+    if (isEraseMode) return;
+    const currentPending = pendingHighlightRef.current;
+    if (!currentPending) {
+      setPendingHighlight({ paragraphNumber: versiculoNum, wordIndex });
+    } else {
+      createCrossParagraphHighlight(currentPending, { paragraphNumber: versiculoNum, wordIndex });
+      setPendingHighlight(null);
+    }
+  }, [isEraseMode, createCrossParagraphHighlight]);
+
+  const handleRemoveHighlight = useCallback((highlightId: string) => {
+    removeHighlight(highlightId);
+  }, [removeHighlight]);
+
+  const toggleHighlightMode = useCallback(() => {
+    setIsHighlightMode(prev => {
+      if (!prev) handleCloseMenu();
+      return !prev;
+    });
+    setIsEraseMode(false);
+    setPendingHighlight(null);
+  }, [handleCloseMenu]);
+
   // Handlers de seleção (mantidos)
   const handleVersiculoPress = useCallback((versiculoNum: number) => {
-    if (longPressActive) {
-      if (selectedVersiculos.includes(versiculoNum)) {
+    if (isHighlightModeRef.current) return;
+    if (longPressActiveRef.current) {
+      if (selectedVersiculosRef.current.includes(versiculoNum)) {
         setSelectedVersiculos(prev => {
           const next = prev.filter(v => v !== versiculoNum);
           if (next.length === 0) {
@@ -227,27 +526,27 @@ export default function CapituloBibliaScreen() {
         setSelectedVersiculos(prev => [...prev, versiculoNum].sort((a, b) => a - b));
       }
     } else {
-      if (selectedVersiculos.length === 1 && selectedVersiculos[0] === versiculoNum) {
+      if (selectedVersiculosRef.current.length === 1 && selectedVersiculosRef.current[0] === versiculoNum) {
         handleCloseMenu();
       } else {
         setSelectedVersiculos([versiculoNum]);
         setShowMenu(true);
       }
     }
-  }, [longPressActive, selectedVersiculos, handleCloseMenu]);
+  }, [handleCloseMenu]);
 
   const handleVersiculoLongPress = useCallback((versiculoNum: number) => {
     setLongPressActive(true);
-    if (!selectedVersiculos.includes(versiculoNum)) {
+    if (!selectedVersiculosRef.current.includes(versiculoNum)) {
       setSelectedVersiculos(prev => [...prev, versiculoNum].sort((a, b) => a - b));
     }
     setShowMenu(true);
-  }, [selectedVersiculos]);
+  }, []);
 
   // Ações do Menu
   const handleCopyVersiculos = async () => {
     if (selectedVersiculos.length === 0 || !capitulo || !livro) return;
-    
+
     const textoParts = selectedVersiculos.map(num => {
       const versiculo = capitulo.versiculos.find((v: Versiculo) => v.versiculo === num);
       return versiculo ? `${num} ${versiculo.texto}` : '';
@@ -262,7 +561,7 @@ export default function CapituloBibliaScreen() {
 
   const handleFavoriteVersiculos = async () => {
     if (selectedVersiculos.length === 0 || !capitulo || !livro) return;
-    
+
     try {
       const groupId = selectedVersiculos.length > 1 ? `${livroSlug}-${currentChapterId}-${Date.now()}` : undefined;
       const groupRange = selectedVersiculos.length > 1 ? `${selectedVersiculos[0]}-${selectedVersiculos[selectedVersiculos.length - 1]}` : undefined;
@@ -275,9 +574,9 @@ export default function CapituloBibliaScreen() {
         if (!versiculo) continue;
 
         const existingFav = favorites.find(
-          fav => fav.bookSlug === livroSlug && 
-                 fav.chapterId === currentChapterId && 
-                 fav.paragraphNumber === versiculoNum
+          fav => fav.bookSlug === livroSlug &&
+            fav.chapterId === currentChapterId &&
+            fav.paragraphNumber === versiculoNum
         );
 
         if (existingFav) {
@@ -301,14 +600,14 @@ export default function CapituloBibliaScreen() {
       if (toRemove.length > 0) {
         await removeFavorites(toRemove);
       }
-      
+
       if (toAdd.length > 0) {
         await addFavorites(toAdd);
       }
-      
+
       if (toAdd.length > 0) Alert.alert('Salvo!', `${toAdd.length} versículo(s) adicionado(s) aos favoritos.`);
       else if (toRemove.length > 0) Alert.alert('Removido', `${toRemove.length} versículo(s) removido(s) dos favoritos.`);
-      
+
       handleCloseMenu();
     } catch (error) {
       console.error('Erro ao favoritar:', error);
@@ -318,7 +617,7 @@ export default function CapituloBibliaScreen() {
 
   const handleShareVersiculos = async () => {
     if (selectedVersiculos.length === 0 || !capitulo || !livro) return;
-    
+
     if (selectedVersiculos.length === 1) {
       const versiculo = capitulo.versiculos.find((v: Versiculo) => v.versiculo === selectedVersiculos[0]);
       const textoFallback = `${livro.nome} ${capitulo.capitulo}:${selectedVersiculos[0]}\n\n"${versiculo?.texto ?? ''}"\n\n— Bíblia Sagrada · Sanctus`;
@@ -362,19 +661,28 @@ export default function CapituloBibliaScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           title: livro.nome,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerShadowVisible: false,
-        }} 
+          headerRight: () => (
+            <Pressable onPress={toggleHighlightMode} style={{ paddingHorizontal: 12 }}>
+              <Ionicons
+                name={isHighlightMode ? 'brush' : 'brush-outline'}
+                size={22}
+                color={isHighlightMode ? colors.primary : colors.text}
+              />
+            </Pressable>
+          ),
+        }}
       />
 
       {/* Barra de Navegação Fixa no Topo */}
       <View style={[styles.navigationBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Pressable 
-          onPress={handlePrevChapter} 
+        <Pressable
+          onPress={handlePrevChapter}
           disabled={isFirstChapter}
           style={[styles.navButton, isFirstChapter && styles.navButtonDisabled]}
         >
@@ -390,8 +698,8 @@ export default function CapituloBibliaScreen() {
           </Text>
         </View>
 
-        <Pressable 
-          onPress={handleNextChapter} 
+        <Pressable
+          onPress={handleNextChapter}
           disabled={isLastChapter}
           style={[styles.navButton, isLastChapter && styles.navButtonDisabled]}
         >
@@ -403,12 +711,12 @@ export default function CapituloBibliaScreen() {
       </View>
 
       {/* Menu Flutuante (quando versículos selecionados) */}
-      {showMenu && selectedVersiculos.length > 0 && (
+      {showMenu && !isHighlightMode && selectedVersiculos.length > 0 && (
         <GestureDetector gesture={panGesture}>
           <Animated.View
             entering={FadeInDown.duration(300)}
             style={[
-              styles.menuContainerFixed, 
+              styles.menuContainerFixed,
               { backgroundColor: colors.surface, borderColor: colors.border },
               animatedMenuStyle
             ]}
@@ -426,15 +734,15 @@ export default function CapituloBibliaScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyVersiculos}>
-                <Ionicons name="copy" size={18} color={colors.primary} />
+                <Ionicons name="copy" size={14} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteVersiculos}>
-                <Ionicons name="heart" size={18} color={colors.error} />
+                <Ionicons name="heart" size={14} color={colors.error} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareVersiculos}>
-                <Ionicons name="share" size={18} color={colors.primary} />
+                <Ionicons name="share" size={14} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>
@@ -449,14 +757,14 @@ export default function CapituloBibliaScreen() {
         keyExtractor={(item) => item.versiculo.toString()}
         renderItem={({ item }) => {
           const selected = selectedVersiculos.includes(item.versiculo);
-          const favorito = favorites.some(
-            fav => fav.bookSlug === livroSlug && 
-                   fav.chapterId === currentChapterId && 
-                   fav.paragraphNumber === item.versiculo
-          );
-          
-          const targetParagraphs = paragraph ? paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n)) : [];
+          const favorito = favoritesSet.has(item.versiculo);
           const isDeepLinkTarget = isDeepLinking && targetParagraphs.includes(item.versiculo);
+          const verseCoverages = coveragesByVerse[item.versiculo] || EMPTY_COVERAGES;
+
+          let pendingStartWord: number | undefined = undefined;
+          if (pendingHighlight && pendingHighlight.paragraphNumber === item.versiculo) {
+            pendingStartWord = pendingHighlight.wordIndex;
+          }
 
           return (
             <VersiculoItem
@@ -464,9 +772,18 @@ export default function CapituloBibliaScreen() {
               selected={selected}
               favorito={favorito}
               colors={colors}
-              onPress={() => handleVersiculoPress(item.versiculo)}
-              onLongPress={() => handleVersiculoLongPress(item.versiculo)}
+              onPress={handleVersiculoPress}
+              onLongPress={handleVersiculoLongPress}
               highlightOpacity={isDeepLinkTarget ? highlightOpacity : undefined}
+              coverages={verseCoverages}
+              isHighlightMode={isHighlightMode}
+              isEraseMode={isHighlightMode ? isEraseMode : false}
+              selectedColor={isHighlightMode ? selectedHighlightColor : HIGHLIGHT_COLORS[0]}
+              isDark={isDark}
+              pendingStartWord={pendingStartWord}
+              pendingCrossFullCoverage={false}
+              onWordTap={handleWordTap}
+              onRemoveHighlight={handleRemoveHighlight}
             />
           );
         }}
@@ -474,11 +791,8 @@ export default function CapituloBibliaScreen() {
         showsVerticalScrollIndicator={false}
         initialNumToRender={20}
         maxToRenderPerBatch={20}
-        windowSize={10}
+        windowSize={4}
         onScrollToIndexFailed={(info) => {
-          // Fallback confiável para listas com altura variável
-          // 1) aproxima com scrollToOffset usando o tamanho médio
-          // 2) re-tenta o scrollToIndex depois que mais itens forem medidos
           const approximateOffset = info.averageItemLength * info.index;
           flatListRef.current?.scrollToOffset({ offset: approximateOffset, animated: true });
 
@@ -504,6 +818,25 @@ export default function CapituloBibliaScreen() {
           hideChapterNumber
         />
       </View>
+
+      {/* Painel de Cores do Grifo */}
+      {isHighlightMode && (
+        <HighlightColorPanel
+          selectedColor={selectedHighlightColor}
+          isEraseMode={isEraseMode}
+          onColorSelect={(color) => {
+            setSelectedHighlightColor(color);
+            setIsEraseMode(false);
+          }}
+          onEraseToggle={() => setIsEraseMode(prev => !prev)}
+          onClose={() => {
+            setIsHighlightMode(false);
+            setIsEraseMode(false);
+          }}
+          colors={colors}
+        />
+      )}
+
     </View>
   );
 }
@@ -633,5 +966,59 @@ const styles = StyleSheet.create({
     ...typography.small,
     fontWeight: '600',
     fontSize: 12,
+  },
+  highlightPanel: {
+    position: 'absolute',
+    bottom: 30,
+    left: spacing.lg,
+    right: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 999,
+  },
+  highlightHelpText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  colorPalette: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleSelected: {
+    borderWidth: 2,
+  },
+  clearBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeHighlightBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -7,26 +7,25 @@ import { Alert, FlatList, Pressable, Animated as RNAnimated, StyleSheet, Text, V
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { HighlightableText, HighlightCoverage } from '@/components/HighlightableText';
+import { HIGHLIGHT_COLORS, HighlightColorPanel } from '@/components/HighlightColorPanel';
 import { getBookBySlug } from '@/lib/data';
 import { useFavoritesSync } from '@/lib/hooks/useFavoritesSync';
+import { useHighlights } from '@/lib/hooks/useHighlights';
+import { resolveHighlightConflicts } from '@/lib/highlightResolver';
 import { getRosarioImageSource } from '@/lib/rosario';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
-import { FavoriteParagraph } from '@/lib/types';
+import { FavoriteParagraph, TextHighlight } from '@/lib/types';
 import { getViaSacraImageSource, getViaSacraStation } from '@/lib/viaSacra';
 import { copyToClipboard, shareAsImage, shareText, showNotification } from '@/lib/webShare';
 import misteriosRaw from '../../../../data/Rosário/Mistérios Terço.json';
 
-// Componente memoizado para cada parágrafo
-const ParagraphItem = React.memo<{
-  paragraph: { number: number; text: string };
-  selected: boolean;
-  favorito: boolean;
-  colors: any;
-  onPress: () => void;
-  onLongPress: () => void;
-  highlightOpacity?: RNAnimated.Value;
-}>(({
+const EMPTY_HIGHLIGHTS: TextHighlight[] = [];
+const EMPTY_COVERAGES: HighlightCoverage[] = [];
+
+// Componente para cada parágrafo (lógica e renderização)
+const ParagraphItemComponent = ({
   paragraph,
   selected,
   favorito,
@@ -34,20 +33,58 @@ const ParagraphItem = React.memo<{
   onPress,
   onLongPress,
   highlightOpacity,
+  coverages,
+  isHighlightMode,
+  isEraseMode,
+  selectedColor,
+  isDark,
+  pendingStartWord,
+  pendingCrossFullCoverage,
+  onWordTap,
+  onRemoveHighlight,
+}: {
+  paragraph: { number: number; text: string };
+  selected: boolean;
+  favorito: boolean;
+  colors: any;
+  onPress: (paragraphNum: number) => void;
+  onLongPress: (paragraphNum: number) => void;
+  highlightOpacity?: RNAnimated.Value;
+  coverages: HighlightCoverage[];
+  isHighlightMode: boolean;
+  isEraseMode: boolean;
+  selectedColor: string;
+  isDark: boolean;
+  pendingStartWord?: number;
+  pendingCrossFullCoverage?: boolean;
+  onWordTap: (paragraphNumber: number, wordIndex: number) => void;
+  onRemoveHighlight: (highlightId: string) => void;
 }) => {
-  const backgroundOpacity = highlightOpacity || new RNAnimated.Value(selected ? 1 : 0);
-  
+  const fallbackOpacity = useRef(new RNAnimated.Value(0)).current;
+  if (!highlightOpacity) {
+    fallbackOpacity.setValue(selected ? 1 : 0);
+  }
+  const backgroundOpacity = highlightOpacity || fallbackOpacity;
+
+  const handlePress = useCallback(() => {
+    onPress(paragraph.number);
+  }, [onPress, paragraph.number]);
+
+  const handleLongPress = useCallback(() => {
+    onLongPress(paragraph.number);
+  }, [onLongPress, paragraph.number]);
+
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={isHighlightMode ? undefined : handlePress}
+      onLongPress={isHighlightMode ? undefined : handleLongPress}
       delayLongPress={300}
       style={[
         styles.paragraphContainer,
         favorito && styles.paragraphFavorite,
       ]}
     >
-      {selected && (
+      {selected && !isHighlightMode && (
         <RNAnimated.View
           style={[
             StyleSheet.absoluteFillObject,
@@ -67,22 +104,81 @@ const ParagraphItem = React.memo<{
           {paragraph.number}
         </Text>
         <View style={styles.paragraphTextContainer}>
-          <Text style={[styles.paragraphText, { color: colors.text }]}>
-            {paragraph.text}
-          </Text>
+          {isHighlightMode || coverages.length > 0 ? (
+            <HighlightableText
+              text={paragraph.text}
+              coverages={coverages}
+              isHighlightMode={isHighlightMode}
+              isEraseMode={isEraseMode}
+              selectedColor={selectedColor}
+              isDark={isDark}
+              paragraphNumber={paragraph.number}
+              pendingStartWord={pendingStartWord}
+              pendingCrossFullCoverage={pendingCrossFullCoverage}
+              onWordTap={onWordTap}
+              onRemoveHighlight={onRemoveHighlight}
+              textStyle={[styles.paragraphText, { color: colors.text }]}
+            />
+          ) : (
+            <Text style={[styles.paragraphText, { color: colors.text }]}>
+              {paragraph.text}
+            </Text>
+          )}
         </View>
       </View>
       {favorito && (
-        <Ionicons 
-          name="heart" 
-          size={14} 
-          color={colors.error} 
+        <Ionicons
+          name="heart"
+          size={14}
+          color={colors.error}
           style={styles.favoriteIcon}
         />
       )}
     </Pressable>
   );
-});
+};
+
+const areHighlightsEqual = (arr1: HighlightCoverage[], arr2: HighlightCoverage[]) => {
+  if (arr1 === arr2) return true;
+  if (arr1.length !== arr2.length) return false;
+  for (let i = 0; i < arr1.length; i++) {
+    const c1 = arr1[i];
+    const c2 = arr2[i];
+    if (
+      c1.highlight.id !== c2.highlight.id ||
+      c1.highlight.color !== c2.highlight.color ||
+      c1.type !== c2.type ||
+      c1.startWord !== c2.startWord ||
+      c1.endWord !== c2.endWord
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const areParagraphPropsEqual = (prevProps: any, nextProps: any) => {
+  if (prevProps.paragraph !== nextProps.paragraph) return false;
+  if (prevProps.selected !== nextProps.selected) return false;
+  if (prevProps.favorito !== nextProps.favorito) return false;
+  if (prevProps.colors !== nextProps.colors) return false;
+  if (prevProps.highlightOpacity !== nextProps.highlightOpacity) return false;
+  if (prevProps.onPress !== nextProps.onPress) return false;
+  if (prevProps.onLongPress !== nextProps.onLongPress) return false;
+  if (!areHighlightsEqual(prevProps.coverages, nextProps.coverages)) return false;
+  if (prevProps.isHighlightMode !== nextProps.isHighlightMode) return false;
+  if (prevProps.isEraseMode !== nextProps.isEraseMode) return false;
+  if (prevProps.selectedColor !== nextProps.selectedColor) return false;
+  if (prevProps.isDark !== nextProps.isDark) return false;
+  if (prevProps.pendingStartWord !== nextProps.pendingStartWord) return false;
+  if (prevProps.pendingCrossFullCoverage !== nextProps.pendingCrossFullCoverage) return false;
+  if (prevProps.onWordTap !== nextProps.onWordTap) return false;
+  if (prevProps.onRemoveHighlight !== nextProps.onRemoveHighlight) return false;
+
+  return true;
+};
+
+const ParagraphItem = React.memo(ParagraphItemComponent, areParagraphPropsEqual);
 
 ParagraphItem.displayName = 'ParagraphItem';
 
@@ -113,16 +209,39 @@ export default function ChapterScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
-  
+
   const flatListRef = useRef<FlatList>(null);
   const shareCardRef = useRef<View>(null);
   const highlightOpacity = useRef(new RNAnimated.Value(0)).current;
   const { favorites, isFavorite: checkIsFavorite, addFavorites, removeFavorites } = useFavoritesSync();
-  
+  const { highlights, removeHighlight, updateChapterHighlights } = useHighlights();
+
   const [selectedParagraphs, setSelectedParagraphs] = useState<number[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [longPressActive, setLongPressActive] = useState(false);
   const [isDeepLinking, setIsDeepLinking] = useState(false);
+  const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const [selectedHighlightColor, setSelectedHighlightColor] = useState(HIGHLIGHT_COLORS[0]);
+  const [isEraseMode, setIsEraseMode] = useState(false);
+  const [pendingHighlight, setPendingHighlight] = useState<{
+    paragraphNumber: number;
+    wordIndex: number;
+  } | null>(null);
+
+  // Refs mutáveis para valores usados em callbacks estáveis
+  const selectedParagraphsRef = useRef(selectedParagraphs);
+  selectedParagraphsRef.current = selectedParagraphs;
+  const longPressActiveRef = useRef(longPressActive);
+  longPressActiveRef.current = longPressActive;
+  const isHighlightModeRef = useRef(isHighlightMode);
+  isHighlightModeRef.current = isHighlightMode;
+  const selectedHighlightColorRef = useRef(selectedHighlightColor);
+  selectedHighlightColorRef.current = selectedHighlightColor;
+  const pendingHighlightRef = useRef(pendingHighlight);
+  pendingHighlightRef.current = pendingHighlight;
+
+
+
 
   // Gestos para o menu flutuante
   const translateX = useSharedValue(0);
@@ -154,10 +273,10 @@ export default function ChapterScreen() {
       translateY.value = withSpring(0);
     }
   }, [showMenu, translateX, translateY]);
-  
+
   // Converter ID para número
   const currentChapterId = parseInt(id || '1', 10);
-  
+
   // Carregar dados
   const book = getBookBySlug(slug);
   const chapter = book?.data.chapters.find(c => c.chapter === currentChapterId);
@@ -299,26 +418,26 @@ export default function ChapterScreen() {
     if (isViaSacra || isMisteriosTerco) return;
     if (paragraph && chapter) {
       const paragraphs = paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n));
-      
+
       if (paragraphs.length > 0) {
         // Encontrar o índice do parágrafo na lista
         const index = chapter.paragraphs.findIndex(p => p.number === paragraphs[0]);
-        
+
         if (index !== -1) {
           // Tentar scrollar imediatamente se possível, ou aguardar
           const tryScroll = (attempts = 0) => {
             if (flatListRef.current) {
-              flatListRef.current.scrollToIndex({ 
-                index, 
+              flatListRef.current.scrollToIndex({
+                index,
                 animated: true,
-                viewPosition: 0.3 
+                viewPosition: 0.3
               });
-              
+
               // Aplicar highlight
               setSelectedParagraphs(paragraphs);
               setIsDeepLinking(true);
               highlightOpacity.setValue(1);
-              
+
               setTimeout(() => {
                 RNAnimated.timing(highlightOpacity, {
                   toValue: 0,
@@ -347,11 +466,193 @@ export default function ChapterScreen() {
     setLongPressActive(false);
   }, []);
 
+  // --- Highlight / Grifo ---
+  const canHighlight = !isViaSacra && !isMisteriosTerco;
+
+  const favoritesSet = useMemo(() => {
+    const set = new Set<number>();
+    for (const fav of favorites) {
+      if (fav.bookSlug === slug && fav.chapterId === currentChapterId) {
+        set.add(fav.paragraphNumber);
+      }
+    }
+    return set;
+  }, [favorites, slug, currentChapterId]);
+
+  const targetParagraphs = useMemo(() => {
+    if (isViaSacra || isMisteriosTerco) return [];
+    return paragraph ? paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n)) : [];
+  }, [paragraph, isViaSacra, isMisteriosTerco]);
+
+  const coveragesByParagraph = useMemo(() => {
+    if (!canHighlight || !chapter) return {};
+    const map: Record<number, HighlightCoverage[]> = {};
+    const chapterHighlights = highlights.filter(h => h.bookSlug === slug && h.chapterId === currentChapterId);
+
+    for (const paragraph of chapter.paragraphs) {
+      const pNum = paragraph.number;
+      const text = paragraph.text;
+      const tokens = text.split(/(\s+)/);
+      const totalWords = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t)).length;
+
+      const coverages: HighlightCoverage[] = [];
+
+      for (const h of chapterHighlights) {
+        const startP = h.paragraphNumber;
+        const endP = h.endParagraphNumber ?? startP;
+
+        if (pNum < startP || pNum > endP) {
+          continue;
+        }
+
+        if (startP === endP) {
+          if (pNum === startP) {
+            coverages.push({
+              highlight: h,
+              type: 'partial',
+              startWord: h.startWordIndex,
+              endWord: h.endWordIndex,
+            });
+          }
+        } else {
+          if (pNum === startP) {
+            coverages.push({
+              highlight: h,
+              type: 'startOnly',
+              startWord: h.startWordIndex,
+              endWord: totalWords - 1,
+            });
+          } else if (pNum === endP) {
+            coverages.push({
+              highlight: h,
+              type: 'endOnly',
+              startWord: 0,
+              endWord: h.endWordIndexEnd ?? h.endWordIndex,
+            });
+          } else {
+            coverages.push({
+              highlight: h,
+              type: 'full',
+              startWord: 0,
+              endWord: totalWords - 1,
+            });
+          }
+        }
+      }
+
+      if (coverages.length > 0) {
+        map[pNum] = coverages;
+      }
+    }
+
+    return map;
+  }, [highlights, slug, currentChapterId, chapter, canHighlight]);
+
+  const createCrossParagraphHighlight = useCallback((
+    start: { paragraphNumber: number; wordIndex: number },
+    end: { paragraphNumber: number; wordIndex: number }
+  ) => {
+    if (!chapter) return;
+
+    let pStart = start.paragraphNumber;
+    let wStart = start.wordIndex;
+    let pEnd = end.paragraphNumber;
+    let wEnd = end.wordIndex;
+
+    if (pStart > pEnd || (pStart === pEnd && wStart > wEnd)) {
+      pStart = end.paragraphNumber;
+      wStart = end.wordIndex;
+      pEnd = start.paragraphNumber;
+      wEnd = start.wordIndex;
+    }
+
+    let highlightedText = '';
+    
+    if (pStart === pEnd) {
+      const p = chapter.paragraphs.find(item => item.number === pStart);
+      if (p) {
+        const tokens = p.text.split(/(\s+)/);
+        const words = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t));
+        highlightedText = words.slice(wStart, wEnd + 1).join(' ');
+      }
+    } else {
+      const parts: string[] = [];
+      for (let pNum = pStart; pNum <= pEnd; pNum++) {
+        const p = chapter.paragraphs.find(item => item.number === pNum);
+        if (!p) continue;
+        const tokens = p.text.split(/(\s+)/);
+        const words = tokens.filter((t: string) => t !== '' && !/^\s+$/.test(t));
+        
+        if (pNum === pStart) {
+          parts.push(words.slice(wStart).join(' '));
+        } else if (pNum === pEnd) {
+          parts.push(words.slice(0, wEnd + 1).join(' '));
+        } else {
+          parts.push(words.join(' '));
+        }
+      }
+      highlightedText = parts.join(' \n ');
+    }
+
+    const newHighlight: TextHighlight = {
+      id: `${slug}-${currentChapterId}-${pStart}-${Date.now()}`,
+      bookSlug: slug,
+      chapterId: currentChapterId,
+      paragraphNumber: pStart,
+      startWordIndex: wStart,
+      endWordIndex: pStart === pEnd ? wEnd : wStart,
+      highlightedText,
+      color: selectedHighlightColorRef.current,
+      timestamp: Date.now(),
+      type: 'livro',
+      endParagraphNumber: pEnd,
+      endWordIndexEnd: wEnd,
+    };
+
+    const chapterHighlights = highlights.filter(
+      h => h.bookSlug === slug && h.chapterId === currentChapterId
+    );
+
+    const paragraphsInfo = chapter.paragraphs.map(p => ({
+      number: p.number,
+      text: p.text,
+    }));
+
+    const resolved = resolveHighlightConflicts(chapterHighlights, newHighlight, paragraphsInfo);
+
+    updateChapterHighlights(slug, currentChapterId, resolved);
+  }, [slug, currentChapterId, chapter, highlights, updateChapterHighlights]);
+
+  const handleWordTap = useCallback((paragraphNum: number, wordIndex: number) => {
+    if (isEraseMode) return;
+    const currentPending = pendingHighlightRef.current;
+    if (!currentPending) {
+      setPendingHighlight({ paragraphNumber: paragraphNum, wordIndex });
+    } else {
+      createCrossParagraphHighlight(currentPending, { paragraphNumber: paragraphNum, wordIndex });
+      setPendingHighlight(null);
+    }
+  }, [isEraseMode, createCrossParagraphHighlight]);
+
+  const handleRemoveHighlight = useCallback((highlightId: string) => {
+    removeHighlight(highlightId);
+  }, [removeHighlight]);
+
+  const toggleHighlightMode = useCallback(() => {
+    setIsHighlightMode(prev => {
+      if (!prev) handleCloseMenu();
+      return !prev;
+    });
+    setIsEraseMode(false);
+    setPendingHighlight(null);
+  }, [handleCloseMenu]);
+
   // Handlers de seleção
   const handleParagraphPress = useCallback((paragraphNum: number) => {
     if (isViaSacra || isMisteriosTerco) return;
-    if (longPressActive) {
-      if (selectedParagraphs.includes(paragraphNum)) {
+    if (isHighlightModeRef.current) return;
+    if (longPressActiveRef.current) {
+      if (selectedParagraphsRef.current.includes(paragraphNum)) {
         setSelectedParagraphs(prev => {
           const next = prev.filter(p => p !== paragraphNum);
           if (next.length === 0) {
@@ -364,7 +665,7 @@ export default function ChapterScreen() {
         setSelectedParagraphs(prev => [...prev, paragraphNum].sort((a, b) => a - b));
       }
     } else {
-      if (selectedParagraphs.length === 1 && selectedParagraphs[0] === paragraphNum) {
+      if (selectedParagraphsRef.current.length === 1 && selectedParagraphsRef.current[0] === paragraphNum) {
         // Segundo toque no mesmo parágrafo: desmarcar de verdade
         handleCloseMenu();
       } else {
@@ -372,21 +673,21 @@ export default function ChapterScreen() {
         setShowMenu(true);
       }
     }
-  }, [longPressActive, selectedParagraphs, handleCloseMenu, isViaSacra, isMisteriosTerco]);
+  }, [handleCloseMenu, isViaSacra, isMisteriosTerco]);
 
   const handleParagraphLongPress = useCallback((paragraphNum: number) => {
     if (isViaSacra || isMisteriosTerco) return;
     setLongPressActive(true);
-    if (!selectedParagraphs.includes(paragraphNum)) {
+    if (!selectedParagraphsRef.current.includes(paragraphNum)) {
       setSelectedParagraphs(prev => [...prev, paragraphNum].sort((a, b) => a - b));
     }
     setShowMenu(true);
-  }, [selectedParagraphs, isViaSacra, isMisteriosTerco]);
+  }, [isViaSacra, isMisteriosTerco]);
 
   // Ações do Menu
   const handleCopyParagraphs = async () => {
     if (selectedParagraphs.length === 0 || !chapter || !book) return;
-    
+
     const textoParts = selectedParagraphs.map(num => {
       const p = chapter.paragraphs.find(p => p.number === num);
       return p ? `[${num}] ${p.text}` : '';
@@ -405,7 +706,7 @@ export default function ChapterScreen() {
 
   const handleFavoriteParagraphs = async () => {
     if (selectedParagraphs.length === 0 || !chapter || !book) return;
-    
+
     try {
       const groupId = selectedParagraphs.length > 1 ? `${slug}-${currentChapterId}-${Date.now()}` : undefined;
       const groupRange = selectedParagraphs.length > 1 ? formatNumberRanges(selectedParagraphs) : undefined;
@@ -420,10 +721,10 @@ export default function ChapterScreen() {
         const existingFav = isCatecismo
           ? favorites.find(fav => fav.bookSlug === 'catecismo' && fav.paragraphNumber === pNum)
           : favorites.find(
-              fav => fav.bookSlug === slug && 
-                     fav.chapterId === currentChapterId && 
-                     fav.paragraphNumber === pNum
-            );
+            fav => fav.bookSlug === slug &&
+              fav.chapterId === currentChapterId &&
+              fav.paragraphNumber === pNum
+          );
 
         if (existingFav) {
           toRemove.push(existingFav);
@@ -446,14 +747,14 @@ export default function ChapterScreen() {
       if (toRemove.length > 0) {
         await removeFavorites(toRemove);
       }
-      
+
       if (toAdd.length > 0) {
         await addFavorites(toAdd);
       }
-      
+
       if (toAdd.length > 0) Alert.alert('Salvo!', `${toAdd.length} parágrafo(s) adicionado(s) aos favoritos.`);
       else if (toRemove.length > 0) Alert.alert('Removido', `${toRemove.length} parágrafo(s) removido(s) dos favoritos.`);
-      
+
       handleCloseMenu();
     } catch (error) {
       console.error('Erro ao favoritar:', error);
@@ -463,7 +764,7 @@ export default function ChapterScreen() {
 
   const handleShareParagraphs = async () => {
     if (selectedParagraphs.length === 0 || !chapter || !book) return;
-    
+
     if (selectedParagraphs.length === 1) {
       const p = chapter.paragraphs.find(item => item.number === selectedParagraphs[0]);
       const textoFallback = `${book.title}\n${isCatecismo ? `CIC §${selectedParagraphs[0]}` : `Cap. ${chapter.chapter} · ${chapter.name}`}\n\n"${p?.text ?? ''}"\n\n#${selectedParagraphs[0]} — Sanctus`;
@@ -508,13 +809,22 @@ export default function ChapterScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           title: isCatecismo ? 'Catecismo' : book.title,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerShadowVisible: false,
-        }} 
+          headerRight: canHighlight ? () => (
+            <Pressable onPress={toggleHighlightMode} style={{ paddingHorizontal: 12 }}>
+              <Ionicons
+                name={isHighlightMode ? 'brush' : 'brush-outline'}
+                size={22}
+                color={isHighlightMode ? colors.primary : colors.text}
+              />
+            </Pressable>
+          ) : undefined,
+        }}
       />
 
       {/* Grupo dos Mistérios (topo) */}
@@ -536,8 +846,8 @@ export default function ChapterScreen() {
           (isViaSacra || isMisteriosTerco) && { borderBottomWidth: 0 },
         ]}
       >
-        <Pressable 
-          onPress={handlePrevChapter} 
+        <Pressable
+          onPress={handlePrevChapter}
           disabled={isFirstChapter}
           style={[styles.navButton, isFirstChapter && styles.navButtonDisabled]}
         >
@@ -561,8 +871,8 @@ export default function ChapterScreen() {
           </Text>
         </View>
 
-        <Pressable 
-          onPress={handleNextChapter} 
+        <Pressable
+          onPress={handleNextChapter}
           disabled={isLastChapter}
           style={[styles.navButton, isLastChapter && styles.navButtonDisabled]}
         >
@@ -574,12 +884,12 @@ export default function ChapterScreen() {
       </View>
 
       {/* Menu Flutuante */}
-      {!isViaSacra && !isMisteriosTerco && showMenu && selectedParagraphs.length > 0 && (
+      {!isViaSacra && !isMisteriosTerco && !isHighlightMode && showMenu && selectedParagraphs.length > 0 && (
         <GestureDetector gesture={panGesture}>
           <Animated.View
             entering={FadeInDown.duration(300)}
             style={[
-              styles.menuContainerFixed, 
+              styles.menuContainerFixed,
               { backgroundColor: colors.surface, borderColor: colors.border },
               animatedMenuStyle
             ]}
@@ -597,15 +907,15 @@ export default function ChapterScreen() {
             </View>
             <View style={styles.menuActions}>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleCopyParagraphs}>
-                <Ionicons name="copy" size={18} color={colors.primary} />
+                <Ionicons name="copy" size={14} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Copiar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleFavoriteParagraphs}>
-                <Ionicons name="heart" size={18} color={colors.error} />
+                <Ionicons name="heart" size={14} color={colors.error} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Favoritar</Text>
               </Pressable>
               <Pressable style={[styles.menuButton, { backgroundColor: colors.surfaceLight }]} onPress={handleShareParagraphs}>
-                <Ionicons name="share" size={18} color={colors.primary} />
+                <Ionicons name="share" size={14} color={colors.primary} />
                 <Text style={[styles.menuButtonText, { color: colors.text }]}>Compartilhar</Text>
               </Pressable>
             </View>
@@ -647,182 +957,184 @@ export default function ChapterScreen() {
         renderItem={({ item }) => {
           if (isViaSacra || isMisteriosTerco) {
             const label = item.label?.trim();
-            
-            // Para Via Sacra
+
             const isVersiculo = isViaSacra && label === 'Versículo';
             const isResposta = isViaSacra && label === 'Resposta';
             const isContemplacao = isViaSacra && label === 'Contemplação';
             const isOracoes = isViaSacra && label === 'Orações';
             const isCantico = isViaSacra && label === 'Cântico';
-            
-            // Para Mistérios do Terço: sempre mostrar label + texto
+
             const isMisterioItem = isMisteriosTerco && label;
 
             return (
               <View style={styles.viaSacraField}>
-                  {isMisterioItem ? (
-                    <>
-                      {/* Seção: Meditação */}
-                      <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={styles.mysterySectionHeader}>
-                          <Ionicons name="book" size={18} color={colors.primary} />
-                          <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Meditação</Text>
-                        </View>
-                        <Text style={[styles.misterioText, { color: colors.text }]}>
-                          {item.text}
-                        </Text>
+                {isMisterioItem ? (
+                  <>
+                    {/* Seção: Meditação */}
+                    <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={styles.mysterySectionHeader}>
+                        <Ionicons name="book" size={18} color={colors.primary} />
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Meditação</Text>
                       </View>
+                      <Text style={[styles.misterioText, { color: colors.text }]}>
+                        {item.text}
+                      </Text>
+                    </View>
 
-                      {isMisteriosTerco && (() => {
-                        const mystery = findMysteryByGlobalIndex(currentChapterId - 1);
-                        if (!mystery) return null;
-                        return (
-                          <>
-                            {/* Seção: Leitura Bíblica */}
-                            {(mystery.leitura_biblica?.referencia || mystery.leitura_biblica?.texto) ? (
-                              <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                                <View style={styles.mysterySectionHeader}>
-                                  <MaterialCommunityIcons name="book-cross" size={18} color={colors.primary} />
-                                  <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Leitura Bíblica</Text>
-                                </View>
-                                {mystery.leitura_biblica?.referencia ? (
-                                  <Pressable
-                                    onPress={() => handleNavigateToBible(mystery.leitura_biblica.referencia)}
-                                    style={({ pressed }) => [
-                                      styles.mysteryRefBadge,
-                                      { backgroundColor: colors.primary + '15' },
-                                      pressed && { opacity: 0.7 }
-                                    ]}
-                                  >
-                                    <Ionicons name="bookmark" size={14} color={colors.primary} />
-                                    <Text numberOfLines={1} style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
-                                  </Pressable>
-                                ) : null}
-                                {mystery.leitura_biblica?.texto ? (
-                                  <Text style={[styles.mysteryReadingText, { color: colors.text }]}>
-                                    “{mystery.leitura_biblica.texto}”
-                                  </Text>
-                                ) : null}
-                              </View>
-                            ) : null}
-
-                            {/* Seção: Orações */}
+                    {isMisteriosTerco && (() => {
+                      const mystery = findMysteryByGlobalIndex(currentChapterId - 1);
+                      if (!mystery) return null;
+                      return (
+                        <>
+                          {/* Seção: Leitura Bíblica */}
+                          {(mystery.leitura_biblica?.referencia || mystery.leitura_biblica?.texto) ? (
                             <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                               <View style={styles.mysterySectionHeader}>
-                                <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
-                                <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
+                                <MaterialCommunityIcons name="book-cross" size={18} color={colors.primary} />
+                                <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Leitura Bíblica</Text>
                               </View>
-                              {(mystery.oracoes?.pai_nosso || mystery.oracoes?.ave_marias) ? (
-                                <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
-                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
-                                    {mystery.oracoes?.pai_nosso ? mystery.oracoes.pai_nosso : ''}{mystery.oracoes?.ave_marias ? '  •  ' + mystery.oracoes.ave_marias : ''}
-                                  </Text>
-                                </View>
+                              {mystery.leitura_biblica?.referencia ? (
+                                <Pressable
+                                  onPress={() => handleNavigateToBible(mystery.leitura_biblica.referencia)}
+                                  style={({ pressed }) => [
+                                    styles.mysteryRefBadge,
+                                    { backgroundColor: colors.primary + '15' },
+                                    pressed && { opacity: 0.7 }
+                                  ]}
+                                >
+                                  <Ionicons name="bookmark" size={14} color={colors.primary} />
+                                  <Text numberOfLines={1} style={[styles.mysteryRefText, { color: colors.primary }]}>{mystery.leitura_biblica.referencia}</Text>
+                                </Pressable>
                               ) : null}
-                              {mystery.oracoes?.gloria ? (
-                                <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
-                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.gloria}</Text>
-                                </View>
-                              ) : null}
-                              {mystery.oracoes?.jaculatoria ? (
-                                <View style={styles.mysteryPrayerRow}>
-                                  <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                  <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.jaculatoria}</Text>
-                                </View>
+                              {mystery.leitura_biblica?.texto ? (
+                                <Text style={[styles.mysteryReadingText, { color: colors.text }]}>
+                                  “{mystery.leitura_biblica.texto}”
+                                </Text>
                               ) : null}
                             </View>
-                          </>
-                        );
-                      })()}
-                    </>
-                  ) : isVersiculo ? (
-                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℣</Text>
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Versículo</Text>
-                      </View>
-                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
-                        {item.text}
-                      </Text>
-                    </View>
-                  ) : isResposta ? (
-                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℟</Text>
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Resposta</Text>
-                      </View>
-                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
-                        {item.text}
-                      </Text>
-                    </View>
-                  ) : isContemplacao ? (
-                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Ionicons name="book" size={18} color={colors.primary} />
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Contemplação</Text>
-                      </View>
-                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
-                        {item.text}
-                      </Text>
-                    </View>
-                  ) : isOracoes ? (() => {
-                    const station = getViaSacraStation(currentChapterId);
-                    return (
-                      <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                          <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
-                          <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
-                        </View>
-                        {item.text ? (
-                          <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
-                            <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                            <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
-                              {item.text}
-                            </Text>
+                          ) : null}
+
+                          {/* Seção: Orações */}
+                          <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <View style={styles.mysterySectionHeader}>
+                              <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
+                              <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
+                            </View>
+                            {(mystery.oracoes?.pai_nosso || mystery.oracoes?.ave_marias) ? (
+                              <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                                  {mystery.oracoes?.pai_nosso ? mystery.oracoes.pai_nosso : ''}{mystery.oracoes?.ave_marias ? '  •  ' + mystery.oracoes.ave_marias : ''}
+                                </Text>
+                              </View>
+                            ) : null}
+                            {mystery.oracoes?.gloria ? (
+                              <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.gloria}</Text>
+                              </View>
+                            ) : null}
+                            {mystery.oracoes?.jaculatoria ? (
+                              <View style={styles.mysteryPrayerRow}>
+                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.jaculatoria}</Text>
+                              </View>
+                            ) : null}
                           </View>
-                        ) : null}
-                        {station?.oracoes_tradicionais ? (
-                          <View style={styles.mysteryPrayerRow}>
-                            <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                            <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
-                              {station.oracoes_tradicionais}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })() : isCantico ? (
-                    <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
-                        <Ionicons name="musical-notes" size={18} color={colors.primary} />
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Cântico</Text>
-                      </View>
-                      <Text style={[styles.viaSacraCanticoText, { color: colors.text }]}>
-                        {item.text}
-                      </Text>
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : isVersiculo ? (
+                  <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                      <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℣</Text>
+                      <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Versículo</Text>
                     </View>
-                  ) : (
+                    <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </View>
+                ) : isResposta ? (
+                  <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                      <Text style={[styles.viaSacraSymbol, { color: colors.primary }]}>℟</Text>
+                      <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Resposta</Text>
+                    </View>
+                    <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </View>
+                ) : isContemplacao ? (
+                  <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                      <Ionicons name="book" size={18} color={colors.primary} />
+                      <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Contemplação</Text>
+                    </View>
+                    <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </View>
+                ) : isOracoes ? (() => {
+                  const station = getViaSacraStation(currentChapterId);
+                  return (
                     <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
                         <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>{label}</Text>
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
                       </View>
-                      <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
-                        {item.text}
-                      </Text>
+                      {item.text ? (
+                        <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
+                          <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                          <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                            {item.text}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {station?.oracoes_tradicionais ? (
+                        <View style={styles.mysteryPrayerRow}>
+                          <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
+                          <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
+                            {station.oracoes_tradicionais}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
-                  )}
+                  );
+                })() : isCantico ? (
+                  <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                      <Ionicons name="musical-notes" size={18} color={colors.primary} />
+                      <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Cântico</Text>
+                    </View>
+                    <Text style={[styles.viaSacraCanticoText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.mysterySection, styles.viaSacraMysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.mysterySectionHeader, styles.viaSacraSectionHeader]}>
+                      <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
+                      <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>{label}</Text>
+                    </View>
+                    <Text style={[styles.viaSacraCardText, { color: colors.text }]}>
+                      {item.text}
+                    </Text>
+                  </View>
+                )}
               </View>
             );
           }
 
           const selected = selectedParagraphs.includes(item.number);
-          const favorito = checkIsFavorite(slug, currentChapterId, item.number);
-          
-          const targetParagraphs = paragraph ? paragraph.split(',').map(p => parseInt(p)).filter(n => !isNaN(n)) : [];
+          const favorito = favoritesSet.has(item.number);
           const isDeepLinkTarget = isDeepLinking && targetParagraphs.includes(item.number);
+          const paraCoverages = coveragesByParagraph[item.number] || EMPTY_COVERAGES;
+
+          let pendingStartWord: number | undefined = undefined;
+          if (pendingHighlight && pendingHighlight.paragraphNumber === item.number) {
+            pendingStartWord = pendingHighlight.wordIndex;
+          }
 
           return (
             <ParagraphItem
@@ -830,9 +1142,18 @@ export default function ChapterScreen() {
               selected={selected}
               favorito={favorito}
               colors={colors}
-              onPress={() => handleParagraphPress(item.number)}
-              onLongPress={() => handleParagraphLongPress(item.number)}
+              onPress={handleParagraphPress}
+              onLongPress={handleParagraphLongPress}
               highlightOpacity={isDeepLinkTarget ? highlightOpacity : undefined}
+              coverages={paraCoverages}
+              isHighlightMode={isHighlightMode && canHighlight}
+              isEraseMode={isHighlightMode && canHighlight ? isEraseMode : false}
+              selectedColor={isHighlightMode && canHighlight ? selectedHighlightColor : HIGHLIGHT_COLORS[0]}
+              isDark={isDark}
+              pendingStartWord={pendingStartWord}
+              pendingCrossFullCoverage={false}
+              onWordTap={handleWordTap}
+              onRemoveHighlight={handleRemoveHighlight}
             />
           );
         }}
@@ -840,11 +1161,8 @@ export default function ChapterScreen() {
         showsVerticalScrollIndicator={false}
         initialNumToRender={20}
         maxToRenderPerBatch={20}
-        windowSize={10}
+        windowSize={4}
         onScrollToIndexFailed={(info) => {
-          // Fallback confiável para listas com altura variável
-          // 1) aproxima com scrollToOffset usando o tamanho médio
-          // 2) re-tenta o scrollToIndex depois que mais itens forem medidos
           const approximateOffset = info.averageItemLength * info.index;
           flatListRef.current?.scrollToOffset({ offset: approximateOffset, animated: true });
 
@@ -870,6 +1188,25 @@ export default function ChapterScreen() {
           hideChapterNumber={isFrasesDeSantos || isMisteriosTerco}
         />
       </View>
+
+      {/* Painel de Cores do Grifo */}
+      {isHighlightMode && canHighlight && (
+        <HighlightColorPanel
+          selectedColor={selectedHighlightColor}
+          isEraseMode={isEraseMode}
+          onColorSelect={(color) => {
+            setSelectedHighlightColor(color);
+            setIsEraseMode(false);
+          }}
+          onEraseToggle={() => setIsEraseMode(prev => !prev)}
+          onClose={() => {
+            setIsHighlightMode(false);
+            setIsEraseMode(false);
+          }}
+          colors={colors}
+        />
+      )}
+
     </View>
   );
 }
@@ -1189,5 +1526,59 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  highlightPanel: {
+    position: 'absolute',
+    bottom: 30,
+    left: spacing.lg,
+    right: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 999,
+  },
+  highlightHelpText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  colorPalette: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleSelected: {
+    borderWidth: 2,
+  },
+  clearBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeHighlightBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

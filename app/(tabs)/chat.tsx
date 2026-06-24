@@ -13,12 +13,12 @@ import {
   Alert,
   Modal,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { Tabs } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, {
+import AnimatedReanimated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,11 +26,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors, spacing, typography, borderRadius } from '@/lib/theme/tokens';
 import { magisteriumService } from '@/lib/services/magisteriumService';
-import { Message, Citation } from '@/lib/types/magisterium';
-import { copyToClipboard, showNotification } from '@/lib/webShare';
+import { magisteriumHistoryService } from '@/lib/services/magisteriumHistoryService';
+import { Message, Citation, MessageUI, MagisteriumChat } from '@/lib/types/magisterium';
+import { copyToClipboard } from '@/lib/webShare';
 
-const CHAT_STORAGE_KEY = '@sanctus:magisterium_chat_history_v1';
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Mensagem inicial do assistente
 const INITIAL_MESSAGE: Message = {
@@ -38,96 +38,163 @@ const INITIAL_MESSAGE: Message = {
   content: 'Salve Maria! Sou o Assistente Católico do Sanctus. Utilizando a tecnologia do Magisterium AI, posso responder suas dúvidas sobre a fé, moral, doutrina, Bíblia e tradição da Igreja Católica. Como posso ajudar você hoje?',
 };
 
-interface MessageUI extends Message {
-  id: string;
-  citations?: Citation[];
-  related_questions?: string[];
-}
-
 export default function ChatScreen() {
   const { isDark } = useTheme();
   const colors = getColors(isDark);
 
+  const [chats, setChats] = useState<MagisteriumChat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageUI[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
+  // Drawer & Renomear
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const drawerAnimation = useRef(new Animated.Value(0)).current;
+  const isInitializing = useRef(false);
+
+  const drawerWidth = SCREEN_WIDTH * 0.75;
+  const drawerTranslateX = drawerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-drawerWidth, 0],
+  });
+
+  const [isRenameVisible, setIsRenameVisible] = useState(false);
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+
   const flatListRef = useRef<FlatList>(null);
 
-  // Salva no AsyncStorage quando o histórico muda
-  const saveChatHistory = useCallback(async (updatedMessages: MessageUI[]) => {
-    try {
-      await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(updatedMessages));
-    } catch (error) {
-      console.error('Erro ao salvar histórico do chat:', error);
-    }
-  }, []);
+  const toggleDrawer = useCallback((open: boolean) => {
+    setIsDrawerVisible(open);
+    Animated.timing(drawerAnimation, {
+      toValue: open ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [drawerAnimation]);
 
-  const loadChatHistory = useCallback(async () => {
+  // Cria um novo chat limpo
+  const handleCreateNewChat = useCallback(async (currentChatsList?: MagisteriumChat[]) => {
+    const list = currentChatsList || chats;
+    const newId = `chat-${Date.now()}`;
+    const newChat: MagisteriumChat = {
+      id: newId,
+      title: 'Nova Conversa',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [{ ...INITIAL_MESSAGE, id: `welcome-msg-${Date.now()}` }],
+    };
+
     try {
-      const saved = await AsyncStorage.getItem(CHAT_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as MessageUI[];
-        setMessages(parsed);
+      await magisteriumHistoryService.saveChat(newChat);
+      const updatedList = [newChat, ...list];
+      setChats(updatedList);
+      setActiveChatId(newId);
+      setMessages(newChat.messages);
+      toggleDrawer(false);
+    } catch (error) {
+      console.error('Erro ao criar novo chat:', error);
+    }
+  }, [chats, toggleDrawer]);
+
+  // Carrega todos os chats locais e define o ativo
+  const loadChats = useCallback(async (selectChatId?: string) => {
+    if (isInitializing.current) return;
+    isInitializing.current = true;
+    try {
+      const storedChats = await magisteriumHistoryService.getChats();
+      setChats(storedChats);
+      
+      if (storedChats.length > 0) {
+        // Seleciona o chat indicado ou o mais recente (primeiro da lista)
+        const targetChat = selectChatId 
+          ? storedChats.find(c => c.id === selectChatId) || storedChats[0]
+          : storedChats[0];
+          
+        setActiveChatId(targetChat.id);
+        setMessages(targetChat.messages);
       } else {
-        // Inicializa com a mensagem de boas-vindas
-        const initialList: MessageUI[] = [
-          {
-            ...INITIAL_MESSAGE,
-            id: 'welcome-msg',
-          },
-        ];
-        setMessages(initialList);
-        saveChatHistory(initialList);
+        // Sem histórico: cria o primeiro chat automático
+        await handleCreateNewChat(storedChats);
       }
     } catch (error) {
-      console.error('Erro ao carregar histórico do chat:', error);
-      // Fallback
+      console.error('Erro ao carregar histórico de chats:', error);
+      // Fallback básico em memória
       setMessages([{ ...INITIAL_MESSAGE, id: 'welcome-msg' }]);
+    } finally {
+      isInitializing.current = false;
     }
-  }, [saveChatHistory]);
+  }, [handleCreateNewChat]);
 
-  // Carrega histórico inicial
   useEffect(() => {
-    loadChatHistory();
-  }, [loadChatHistory]);
+    loadChats();
+  }, [loadChats]);
 
-  // Limpa histórico
-  const handleClearChat = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+  // Exclui um chat do histórico
+  const handleDeleteChat = (chatId: string) => {
     Alert.alert(
-      'Limpar Conversa',
-      'Deseja apagar todo o histórico de mensagens?',
+      'Apagar Conversa',
+      'Tem certeza de que deseja excluir permanentemente esta conversa?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Limpar',
+          text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
             try {
-              const resetList: MessageUI[] = [
-                {
-                  ...INITIAL_MESSAGE,
-                  id: `welcome-msg-${Date.now()}`,
-                },
-              ];
-              setMessages(resetList);
-              await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(resetList));
+              await magisteriumHistoryService.deleteChat(chatId);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              
+              if (chatId === activeChatId) {
+                const remaining = chats.filter(c => c.id !== chatId);
+                if (remaining.length > 0) {
+                  setChats(remaining);
+                  setActiveChatId(remaining[0].id);
+                  setMessages(remaining[0].messages);
+                  toggleDrawer(false);
+                } else {
+                  await handleCreateNewChat([]);
+                }
+              } else {
+                setChats(prev => prev.filter(c => c.id !== chatId));
+              }
             } catch (error) {
-              console.error('Erro ao limpar histórico:', error);
+              console.error('Erro ao deletar chat:', error);
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
 
+  const startRenameChat = (chatId: string, currentTitle: string) => {
+    setRenameTargetId(chatId);
+    setRenameText(currentTitle);
+    setIsRenameVisible(true);
+  };
+
+  const handleConfirmRename = async () => {
+    if (!renameTargetId || !renameText.trim()) return;
+    try {
+      await magisteriumHistoryService.renameChat(renameTargetId, renameText.trim());
+      setIsRenameVisible(false);
+      setRenameTargetId(null);
+      setRenameText('');
+      
+      const updatedChats = await magisteriumHistoryService.getChats();
+      setChats(updatedChats);
+    } catch (error) {
+      console.error('Erro ao renomear chat:', error);
+    }
+  };
+
   // Enviar mensagem
   const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || !activeChatId) return;
 
     // Feedback tátil
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -147,7 +214,6 @@ export default function ChatScreen() {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      // Filtra o histórico para enviar à API (somente role e content)
       const apiHistory: Message[] = newMessages.map(m => ({
         role: m.role,
         content: m.content,
@@ -158,7 +224,6 @@ export default function ChatScreen() {
       const choice = response.choices?.[0];
       let assistantText = choice?.message?.content || '';
 
-      // Verifica se houve bloqueio por moderação
       if (choice?.finish_reason === 'content_filter' && !assistantText) {
         assistantText = 'Desculpe, mas essa pergunta está fora do escopo teológico, bíblico ou de moral da Igreja Católica. Por favor, faça uma pergunta sobre a fé católica.';
       }
@@ -173,7 +238,21 @@ export default function ChatScreen() {
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
-      saveChatHistory(finalMessages);
+
+      // Salva no AsyncStorage local usando o serviço histórico
+      const currentChat = chats.find(c => c.id === activeChatId);
+      if (currentChat) {
+        const isDefaultTitle = currentChat.title === 'Nova Conversa';
+        const updatedChat: MagisteriumChat = {
+          ...currentChat,
+          title: isDefaultTitle ? (userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content) : currentChat.title,
+          messages: finalMessages,
+        };
+        await magisteriumHistoryService.saveChat(updatedChat);
+        
+        const updatedList = await magisteriumHistoryService.getChats();
+        setChats(updatedList);
+      }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
@@ -404,18 +483,19 @@ export default function ChatScreen() {
         options={{
           headerTitle: 'Magisterium AI',
           tabBarLabel: 'Magisterium',
-          headerRight: () => (
+          headerLeft: () => (
             <Pressable
-              onPress={handleClearChat}
+              onPress={() => toggleDrawer(true)}
               hitSlop={10}
               style={({ pressed }) => ({
                 opacity: pressed ? 0.7 : 1,
-                paddingHorizontal: 8,
+                paddingLeft: 16,
               })}
             >
-              <Ionicons name="trash" size={20} color={colors.text} />
+              <Ionicons name="menu" size={24} color={colors.text} />
             </Pressable>
           ),
+
         }}
       />
 
@@ -594,6 +674,154 @@ export default function ChatScreen() {
                 <Text style={[styles.modalActionButtonText, { color: isCopied ? colors.success : colors.text, fontWeight: isCopied ? 'bold' : '600' }]}>
                   {isCopied ? 'Copiado' : 'Copiar'}
                 </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Drawer Retrátil Esquerdo */}
+      {isDrawerVisible && (
+        <View style={StyleSheet.absoluteFillObject}>
+          {/* Overlay transparente/translúcido de fechamento */}
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.overlay }]}
+            onPress={() => toggleDrawer(false)}
+          />
+          
+          <Animated.View
+            style={[
+              styles.drawerContainer,
+              {
+                backgroundColor: colors.surface,
+                borderRightColor: colors.border,
+                transform: [{ translateX: drawerTranslateX }],
+                width: SCREEN_WIDTH * 0.75,
+              }
+            ]}
+          >
+            <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+              <View style={styles.drawerHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                  <Text style={[styles.drawerTitle, { color: colors.text }]}>Histórico</Text>
+                </View>
+                <Pressable onPress={() => toggleDrawer(false)} hitSlop={10}>
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.newChatButton,
+                  { backgroundColor: colors.primary + '15', borderColor: colors.primary },
+                  pressed && { opacity: 0.8 }
+                ]}
+                onPress={() => handleCreateNewChat()}
+              >
+                <Ionicons name="add" size={18} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.newChatButtonText, { color: colors.primary }]}>Nova Conversa</Text>
+              </Pressable>
+
+              <ScrollView style={{ flex: 1, marginTop: spacing.md }} showsVerticalScrollIndicator={true}>
+                {chats.length === 0 ? (
+                  <Text style={{ textAlign: 'center', color: colors.textMuted, marginVertical: spacing.lg, fontSize: 13 }}>
+                    Nenhuma conversa encontrada.
+                  </Text>
+                ) : (
+                  chats.map((chat) => {
+                    const isActive = chat.id === activeChatId;
+                    return (
+                      <Pressable
+                        key={chat.id}
+                        style={[
+                          styles.chatHistoryItem,
+                          { borderColor: colors.border },
+                          isActive && { backgroundColor: colors.primary + '08', borderColor: colors.primary }
+                        ]}
+                        onPress={() => {
+                          setActiveChatId(chat.id);
+                          setMessages(chat.messages);
+                          toggleDrawer(false);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: spacing.sm }}>
+                          <Text
+                            style={[
+                              styles.chatHistoryItemTitle,
+                              { color: colors.text },
+                              isActive && { fontWeight: 'bold', color: colors.primary }
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {chat.title}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>
+                            {new Date(chat.updatedAt).toLocaleDateString('pt-BR')}
+                          </Text>
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', gap: 2 }}>
+                          <Pressable
+                            style={styles.chatHistoryActionButton}
+                            onPress={() => startRenameChat(chat.id, chat.title)}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </Pressable>
+                          <Pressable
+                            style={styles.chatHistoryActionButton}
+                            onPress={() => handleDeleteChat(chat.id)}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="trash" size={14} color={colors.error} />
+                          </Pressable>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          </Animated.View>
+        </View>
+      )}
+
+      {/* Modal de Renomear Chat */}
+      <Modal
+        visible={isRenameVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsRenameVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay, justifyContent: 'center', paddingHorizontal: spacing.lg }]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsRenameVisible(false)} />
+          <View style={[styles.renameContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.renameTitle, { color: colors.text }]}>Renomear Conversa</Text>
+            
+            <TextInput
+              style={[styles.renameInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+              value={renameText}
+              onChangeText={setRenameText}
+              placeholder="Digite o novo título..."
+              placeholderTextColor={colors.textMuted}
+              maxLength={40}
+              autoFocus
+            />
+
+            <View style={styles.renameActionsRow}>
+              <Pressable
+                style={[styles.renameButton, { backgroundColor: colors.surfaceLight }]}
+                onPress={() => setIsRenameVisible(false)}
+              >
+                <Text style={[styles.renameButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.renameButton, { backgroundColor: colors.primary }]}
+                onPress={handleConfirmRename}
+              >
+                <Text style={[styles.renameButtonText, { color: '#FFFFFF', fontWeight: 'bold' }]}>Confirmar</Text>
               </Pressable>
             </View>
           </View>
@@ -844,5 +1072,103 @@ const styles = StyleSheet.create({
   modalActionButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  newChatButton: {
+    height: 46,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  newChatButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  chatHistoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  chatHistoryItemTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  chatHistoryActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  renameContainer: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+    width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
+  },
+  renameTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: spacing.md,
+  },
+  renameInput: {
+    height: 44,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.lg,
+    fontSize: 15,
+  },
+  renameActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+  },
+  renameButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  renameButtonText: {
+    fontSize: 14,
+  },
+  drawerContainer: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRightWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 10 : spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 16,
+    zIndex: 9999,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+    marginBottom: spacing.xs,
+  },
+  drawerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

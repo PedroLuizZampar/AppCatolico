@@ -364,7 +364,7 @@ export default function MeditacaoEvangelhoScreen() {
           style={styles.header}
         >
           <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="comment-text-multiple" size={36} color="#9C27B0" />
+            <MaterialCommunityIcons name="book-open-variant" size={36} color="#894e93" />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Evangelho Meditado</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Reflexão Diária</Text>

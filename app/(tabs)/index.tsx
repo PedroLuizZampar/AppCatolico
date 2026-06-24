@@ -37,7 +37,7 @@ export default function HomeScreen() {
       title: 'Evangelho Meditado',
       subtitle: 'Reflexão diária',
       icon: 'book-open-variant', // Livro aberto
-      color: '#9C27B0', // Roxo
+      color: '#894e93', // Roxo
       route: '/meditacao-evangelho',
       library: 'MaterialCommunityIcons',
     },
