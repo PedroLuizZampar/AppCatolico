@@ -76,31 +76,14 @@ export default function ChatScreen() {
     }).start();
   }, [drawerAnimation]);
 
-  // Cria um novo chat limpo
-  const handleCreateNewChat = useCallback(async (currentChatsList?: MagisteriumChat[]) => {
-    const list = currentChatsList || chats;
-    const newId = `chat-${Date.now()}`;
-    const newChat: MagisteriumChat = {
-      id: newId,
-      title: 'Nova Conversa',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      messages: [{ ...INITIAL_MESSAGE, id: `welcome-msg-${Date.now()}` }],
-    };
+  // Cria um novo chat limpo localmente (sem persistir até a primeira mensagem)
+  const handleCreateNewChat = useCallback(() => {
+    setActiveChatId(null);
+    setMessages([]);
+    toggleDrawer(false);
+  }, [toggleDrawer]);
 
-    try {
-      await magisteriumHistoryService.saveChat(newChat);
-      const updatedList = [newChat, ...list];
-      setChats(updatedList);
-      setActiveChatId(newId);
-      setMessages(newChat.messages);
-      toggleDrawer(false);
-    } catch (error) {
-      console.error('Erro ao criar novo chat:', error);
-    }
-  }, [chats, toggleDrawer]);
-
-  // Carrega todos os chats locais e define o ativo
+  // Carrega todos os chats locais e define o ativo se solicitado
   const loadChats = useCallback(async (selectChatId?: string) => {
     if (isInitializing.current) return;
     isInitializing.current = true;
@@ -108,26 +91,24 @@ export default function ChatScreen() {
       const storedChats = await magisteriumHistoryService.getChats();
       setChats(storedChats);
       
-      if (storedChats.length > 0) {
-        // Seleciona o chat indicado ou o mais recente (primeiro da lista)
-        const targetChat = selectChatId 
-          ? storedChats.find(c => c.id === selectChatId) || storedChats[0]
-          : storedChats[0];
-          
-        setActiveChatId(targetChat.id);
-        setMessages(targetChat.messages);
+      if (selectChatId) {
+        const targetChat = storedChats.find(c => c.id === selectChatId);
+        if (targetChat) {
+          setActiveChatId(targetChat.id);
+          setMessages(targetChat.messages);
+        }
       } else {
-        // Sem histórico: cria o primeiro chat automático
-        await handleCreateNewChat(storedChats);
+        // Inicializa na tela de Novo Chat vazia
+        setActiveChatId(null);
+        setMessages([]);
       }
     } catch (error) {
       console.error('Erro ao carregar histórico de chats:', error);
-      // Fallback básico em memória
-      setMessages([{ ...INITIAL_MESSAGE, id: 'welcome-msg' }]);
+      setMessages([]);
     } finally {
       isInitializing.current = false;
     }
-  }, [handleCreateNewChat]);
+  }, []);
 
   useEffect(() => {
     loadChats();
@@ -157,7 +138,7 @@ export default function ChatScreen() {
                   setMessages(remaining[0].messages);
                   toggleDrawer(false);
                 } else {
-                  await handleCreateNewChat([]);
+                  handleCreateNewChat();
                 }
               } else {
                 setChats(prev => prev.filter(c => c.id !== chatId));
@@ -194,7 +175,7 @@ export default function ChatScreen() {
 
   // Enviar mensagem
   const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isLoading || !activeChatId) return;
+    if (!text.trim() || isLoading) return;
 
     // Feedback tátil
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -205,10 +186,18 @@ export default function ChatScreen() {
       content: text.trim(),
     };
 
+    const isNewChat = !activeChatId;
+    const chatId = activeChatId || `chat-${Date.now()}`;
+
+    // Atualiza estados locais de imediato para renderizar a mensagem do usuário na tela
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputText('');
     setIsLoading(true);
+
+    if (isNewChat) {
+      setActiveChatId(chatId);
+    }
 
     // Rola para o fim
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -239,20 +228,32 @@ export default function ChatScreen() {
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
 
-      // Salva no AsyncStorage local usando o serviço histórico
-      const currentChat = chats.find(c => c.id === activeChatId);
-      if (currentChat) {
-        const isDefaultTitle = currentChat.title === 'Nova Conversa';
-        const updatedChat: MagisteriumChat = {
-          ...currentChat,
-          title: isDefaultTitle ? (userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content) : currentChat.title,
+      // Cria/atualiza o objeto de chat e salva no AsyncStorage local
+      let updatedChat: MagisteriumChat;
+      if (isNewChat) {
+        updatedChat = {
+          id: chatId,
+          title: userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
           messages: finalMessages,
         };
-        await magisteriumHistoryService.saveChat(updatedChat);
-        
-        const updatedList = await magisteriumHistoryService.getChats();
-        setChats(updatedList);
+      } else {
+        const currentChat = chats.find(c => c.id === chatId);
+        const isDefaultTitle = currentChat?.title === 'Nova Conversa';
+        updatedChat = {
+          id: chatId,
+          title: currentChat ? (isDefaultTitle ? (userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content) : currentChat.title) : (userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content),
+          createdAt: currentChat?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          messages: finalMessages,
+        };
       }
+
+      await magisteriumHistoryService.saveChat(updatedChat);
+      
+      const updatedList = await magisteriumHistoryService.getChats();
+      setChats(updatedList);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
@@ -267,6 +268,31 @@ export default function ChatScreen() {
 
       const finalMessages = [...newMessages, errorMessage];
       setMessages(finalMessages);
+
+      // Salva o chat mesmo em caso de erro para que o usuário não perca sua pergunta
+      let updatedChat: MagisteriumChat;
+      if (isNewChat) {
+        updatedChat = {
+          id: chatId,
+          title: userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messages: finalMessages,
+        };
+      } else {
+        const currentChat = chats.find(c => c.id === chatId);
+        updatedChat = {
+          id: chatId,
+          title: currentChat?.title || (userMessage.content.length > 30 ? userMessage.content.substring(0, 27) + '...' : userMessage.content),
+          createdAt: currentChat?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          messages: finalMessages,
+        };
+      }
+      await magisteriumHistoryService.saveChat(updatedChat);
+
+      const updatedList = await magisteriumHistoryService.getChats();
+      setChats(updatedList);
     } finally {
       setIsLoading(false);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -406,7 +432,7 @@ export default function ChatScreen() {
     const isUser = item.role === 'user';
 
     return (
-      <Animated.View
+      <AnimatedReanimated.View
         entering={FadeInDown.duration(300)}
         style={[
           styles.messageRow,
@@ -471,7 +497,26 @@ export default function ChatScreen() {
             </View>
           )}
         </View>
-      </Animated.View>
+      </AnimatedReanimated.View>
+    );
+  };
+
+  const renderEmptyState = () => {
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={[styles.welcomeIconContainer, { backgroundColor: colors.primary + '15' }]}>
+          <MaterialCommunityIcons name="cross" size={32} color={colors.primary} />
+        </View>
+        <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+          Salve Maria!
+        </Text>
+        <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
+          Como posso ajudar na sua fé hoje?
+        </Text>
+        <Text style={[styles.welcomeDescription, { color: colors.textMuted }]}>
+          Faça perguntas sobre a doutrina, teologia, tradição, moral ou Sagrada Escritura da Igreja Católica.
+        </Text>
+      </View>
     );
   };
 
@@ -495,7 +540,21 @@ export default function ChatScreen() {
               <Ionicons name="menu" size={24} color={colors.text} />
             </Pressable>
           ),
-
+          headerRight: () => (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleCreateNewChat();
+              }}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                paddingRight: 16,
+              })}
+            >
+              <Ionicons name="create-outline" size={24} color={colors.text} />
+            </Pressable>
+          ),
         }}
       />
 
@@ -509,8 +568,13 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={item => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.listContent, { paddingBottom: spacing.lg }]}
+          contentContainerStyle={[
+            styles.listContent,
+            messages.length === 0 && { flexGrow: 1, justifyContent: 'center' },
+            { paddingBottom: spacing.lg }
+          ]}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmptyState}
           ListFooterComponent={
             isLoading ? (
               <View style={styles.loadingBubbleRow}>
@@ -530,7 +594,7 @@ export default function ChatScreen() {
 
         {/* Perguntas Recomendadas (Pills) */}
         {!isLoading && lastMessage && lastMessage.role === 'assistant' && lastMessage.related_questions && lastMessage.related_questions.length > 0 && (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.relatedSection}>
+          <AnimatedReanimated.View entering={FadeInDown.duration(400)} style={styles.relatedSection}>
             <Text style={[styles.relatedHeading, { color: colors.textMuted }]}>Perguntas Relacionadas:</Text>
             <ScrollView
               horizontal
@@ -554,7 +618,7 @@ export default function ChatScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-          </Animated.View>
+          </AnimatedReanimated.View>
         )}
 
         {/* Input da Mensagem */}
@@ -834,6 +898,38 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+  },
+  welcomeIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  welcomeTitle: {
+    ...typography.h2,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  welcomeSubtitle: {
+    ...typography.h4,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 24,
+  },
+  welcomeDescription: {
+    ...typography.body,
+    textAlign: 'center',
+    maxWidth: '85%',
   },
   keyboardView: {
     flex: 1,
