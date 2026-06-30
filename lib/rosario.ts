@@ -30,3 +30,22 @@ export const ROSARIO_IMAGE_SOURCES: Record<number, ImageSourcePropType> = {
 export const getRosarioImageSource = (index: number): ImageSourcePropType | undefined => {
   return ROSARIO_IMAGE_SOURCES[index];
 };
+
+export const getTodayMisteriosStartId = (): number => {
+  const day = new Date().getDay(); // 0: Domingo, 1: Segunda, etc.
+  switch (day) {
+    case 1: // Segunda-feira
+    case 6: // Sábado
+      return 1; // Gozosos
+    case 2: // Terça-feira
+    case 5: // Sexta-feira
+      return 11; // Dolorosos
+    case 3: // Quarta-feira
+    case 0: // Domingo
+      return 16; // Gloriosos
+    case 4: // Quinta-feira
+      return 6; // Luminosos
+    default:
+      return 1; // Gozosos fallback
+  }
+};

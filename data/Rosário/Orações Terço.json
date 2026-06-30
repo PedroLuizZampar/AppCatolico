@@ -1,0 +1,42 @@
+{
+  "sinal_da_cruz": {
+    "titulo": "Sinal da Cruz",
+    "conteudo": "Pelo sinal da Santa Cruz, livrai-nos, Deus, Nosso Senhor, dos nossos inimigos. Em nome do Pai, e do Filho, e do Espírito Santo. Amém."
+  },
+  "oferecimento": {
+    "titulo": "Oferecimento",
+    "conteudo": "Divino Jesus, nós Vos oferecemos este terço que vamos rezar, contemplando os mistérios da Vossa Redenção. Concedei-nos, pela intercessão de Maria, Vossa Mãe Santíssima, a quem nos dirigimos, as virtudes que nos são necessárias para bem rezá-lo e a graça de ganharmos as indulgências anexas a esta santa devoção."
+  },
+  "oferecimento_rosario": {
+    "titulo": "Oferecimento",
+    "conteudo": "Divino Jesus, nós Vos oferecemos este Rosário que vamos rezar, contemplando os mistérios da Vossa Redenção. Concedei-nos, pela intercessão de Maria, Vossa Mãe Santíssima, a quem nos dirigimos, as virtudes que nos são necessárias para bem rezá-lo e a graça de ganharmos as indulgências anexas a esta santa devoção."
+  },
+  "creio": {
+    "titulo": "Creio",
+    "conteudo": "Creio em Deus Pai Todo-Poderoso, Criador do céu e da terra; e em Jesus Cristo, seu único Filho, nosso Senhor; que foi concebido pelo poder do Espírito Santo; nasceu da Virgem Maria, padeceu sob Pôncio Pilatos, foi crucificado, morto e sepultado; desceu à mansão dos mortos; ressuscitou ao terceiro dia; subiu aos céus, está sentado à direita de Deus Pai todo-poderoso, de onde há de vir a julgar os vivos e os mortos. Creio no Espírito Santo, na Santa Igreja Católica, na comunhão dos Santos, na remissão dos pecados, na ressurreição da carne, na vida eterna. Amém."
+  },
+  "pai_nosso": {
+    "titulo": "Pai Nosso",
+    "conteudo": "Pai Nosso que estais nos céus, santificado seja o vosso Nome, venha a nós o vosso Reino, seja feita a vossa vontade assim na terra como no céu. O pão nosso de cada dia nos dai hoje, perdoai-nos as nossas ofensas assim como nós perdoamos a quem nos tem ofendido, e não nos deixeis cair em tentação, mas livrai-nos do Mal. Amém."
+  },
+  "ave_maria": {
+    "titulo": "Ave Maria",
+    "conteudo": "Ave Maria, cheia de graça, o Senhor é convosco, bendita sois vós entre as mulheres e bendito é o fruto do vosso ventre, Jesus. Santa Maria, Mãe de Deus, rogai por nós pecadores, agora e na hora da nossa morte. Amém."
+  },
+  "gloria": {
+    "titulo": "Glória ao Pai",
+    "conteudo": "Glória ao Pai, e ao Filho e ao Espírito Santo. Como era no princípio, agora e sempre. Amém."
+  },
+  "jaculatoria": {
+    "titulo": "Ó meu Jesus",
+    "conteudo": "Ó meu Jesus, perdoai-nos, livrai-nos do fogo do inferno, levai as almas todas para o céu e socorrei principalmente as que mais precisarem."
+  },
+  "agradecimento": {
+    "titulo": "Agradecimento",
+    "conteudo": "Infinitas graças vos damos, Soberana Rainha, pelos benefícios que todos os dias recebemos de vossas mãos liberais; dignai-vos, agora e sempre, tomar-nos debaixo do vosso poderoso amparo, e para mais vos obrigar, vos saudamos com uma Salve Rainha:"
+  },
+  "salve_rainha": {
+    "titulo": "Salve Rainha",
+    "conteudo": "Salve, Rainha, Mãe de misericórdia, vida, doçura e esperança nossa, salve! A vós bradamos os degredados filhos de Eva. A vós suspiramos, gemendo e chorando neste vale de lágrimas. Eia, pois, advogada nossa, esses vossos olhos misericordiosos a nós volvei, e depois deste desterro mostrai-nos Jesus, bendito fruto do vosso ventre, ó clemente, ó piedosa, ó doce sempre Virgem Maria.\n\n℣. Rogai por nós, Santa Mãe de Deus.\n℟. Para que sejamos dignos das promessas de Cristo. Amém."
+  }
+}

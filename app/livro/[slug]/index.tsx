@@ -27,7 +27,7 @@ const getBookIcon = (slug: string, color: string) => {
     case 'via-sacra':
       return <MaterialCommunityIcons name="cross" size={size} color={color} />;
     case 'misterios-terco':
-      return <MaterialCommunityIcons name="hands-pray" size={size} color={color} />;
+      return <Ionicons name="rose" size={size} color={color} />;
     default:
       return <MaterialCommunityIcons name="book-open-variant" size={size} color={color} />;
   }
@@ -293,6 +293,26 @@ export default function BookScreen() {
                     ? 'Mistérios'
                     : 'Capítulos'}
           </Text>
+
+          {isMisteriosTerco && (
+            <Animated.View entering={FadeInDown.duration(400)}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iniciarRosarioButton,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  }
+                ]}
+                onPress={() => router.push(`/livro/${slug}/capitulo/1?fluxo=intro&completo=true&tipo=rosario`)}
+              >
+                <Ionicons name="rose" size={20} color="#fff" />
+                <Text style={styles.iniciarRosarioText}>Iniciar Rosário Completo</Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
           {isMisteriosTerco ? (
             // Mostrar apenas botões por grupo de mistérios (não listar cada mistério)
             (misteriosRaw as any[]).map((grupo, gIndex) => {
@@ -301,7 +321,7 @@ export default function BookScreen() {
                 <Animated.View key={grupo.grupo} entering={FadeInDown.duration(400).delay(100 + gIndex * 30)}>
                   <Pressable
                     style={[styles.groupItem, { borderRadius: borderRadius.md, backgroundColor: colors.surface }]}
-                    onPress={() => router.push(`/livro/${slug}/capitulo/${chapterIdStart}`)}
+                    onPress={() => router.push(`/livro/${slug}/capitulo/${chapterIdStart}?fluxo=intro&tipo=rosario`)}
                   >
                     <View style={styles.groupItemContent}>
                       <Text style={[styles.groupItemTitle, { color: colors.text }]}>{grupo.grupo}</Text>
@@ -546,5 +566,24 @@ const styles = StyleSheet.create({
   contentResultChapter: {
     ...typography.small,
     flex: 1,
+  },
+  iniciarRosarioButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.lg,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  iniciarRosarioText: {
+    ...typography.body,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

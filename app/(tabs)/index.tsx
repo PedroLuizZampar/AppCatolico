@@ -6,6 +6,7 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getTodayMisteriosStartId } from '@/lib/rosario';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -82,18 +83,26 @@ export default function HomeScreen() {
       library: 'MaterialCommunityIcons',
     },
     {
+      title: 'Rezar Terço',
+      subtitle: 'Terço do dia',
+      icon: 'hands-pray',
+      color: '#c6a656',
+      route: `/livro/misterios-terco/capitulo/${getTodayMisteriosStartId()}?fluxo=intro&tipo=terco`,
+      library: 'MaterialCommunityIcons',
+    },
+    {
       title: 'Santo Rosário',
       subtitle: 'Mistérios do Terço',
-      icon: 'hands-pray', // Mãos postas em oração (ou 'rosary' se preferir o terço literal)
-      color: '#E53935', // Vermelho da Rosa
+      icon: 'rose',
+      color: '#D32F2F',
       route: '/livro/misterios-terco',
-      library: 'MaterialCommunityIcons',
+      library: 'Ionicons',
     },
     {
       title: 'Via Sacra',
       subtitle: 'Meditação da Paixão',
       icon: 'cross', // A própria cruz de Cristo para a Via Crucis
-      color: '#FF5722', // Laranja Escuro
+      color: '#ed6b43', // Laranja Escuro
       route: '/livro/via-sacra',
       library: 'MaterialCommunityIcons',
     },

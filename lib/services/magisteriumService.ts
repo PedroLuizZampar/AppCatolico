@@ -1,16 +1,11 @@
 import { MagisteriumRequest, MagisteriumResponse, Message } from '../types/magisterium';
 
-const BASE_URL = 'https://www.magisterium.com/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-sanctus.onrender.com';
+const SANCTUS_APP_TOKEN = process.env.EXPO_PUBLIC_SANCTUS_APP_TOKEN || '';
 
 export class MagisteriumService {
-  private apiKey: string;
-
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
   /**
-   * Envia o histórico de mensagens para a API e retorna a resposta com citações e sugestões.
+   * Envia o histórico de mensagens para a API do proxy backend que encaminha para o Magisterium AI.
    */
   async sendMessage(history: Message[]): Promise<MagisteriumResponse> {
     const payload: MagisteriumRequest = {
@@ -25,10 +20,10 @@ export class MagisteriumService {
     };
 
     try {
-      const response = await fetch(`${BASE_URL}/chat/completions`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'x-sanctus-token': SANCTUS_APP_TOKEN,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -36,21 +31,22 @@ export class MagisteriumService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData?.error?.message || 
-          `Falha na requisição: ${response.status} ${response.statusText}`
-        );
+        const errorMessage = 
+          errorData?.detail?.error?.message || 
+          errorData?.detail || 
+          `Falha na requisição: ${response.status} ${response.statusText}`;
+        
+        throw new Error(errorMessage);
       }
 
       const data: MagisteriumResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro de conexão com o Magisterium AI:', error);
+      console.error('Erro de conexão com o Magisterium AI através do proxy:', error);
       throw error;
     }
   }
 }
 
-// Instância única padrão utilizando a variável de ambiente do Expo
-const apiKey = process.env.EXPO_PUBLIC_MAGISTERIUM_API_KEY || '';
-export const magisteriumService = new MagisteriumService(apiKey);
+// Instância única padrão do serviço
+export const magisteriumService = new MagisteriumService();

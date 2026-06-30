@@ -20,6 +20,8 @@ import { FavoriteParagraph, TextHighlight } from '@/lib/types';
 import { getViaSacraImageSource, getViaSacraStation } from '@/lib/viaSacra';
 import { copyToClipboard, shareAsImage, shareText, showNotification } from '@/lib/webShare';
 import misteriosRaw from '../../../../data/Rosário/Mistérios Terço.json';
+import * as Haptics from 'expo-haptics';
+import oracoesJson from '../../../../data/Rosário/Orações Terço.json';
 
 const EMPTY_HIGHLIGHTS: TextHighlight[] = [];
 const EMPTY_COVERAGES: HighlightCoverage[] = [];
@@ -157,38 +159,15 @@ const areHighlightsEqual = (arr1: HighlightCoverage[], arr2: HighlightCoverage[]
   return true;
 };
 
-const areParagraphPropsEqual = (prevProps: any, nextProps: any) => {
-  if (prevProps.paragraph !== nextProps.paragraph) return false;
-  if (prevProps.selected !== nextProps.selected) return false;
-  if (prevProps.favorito !== nextProps.favorito) return false;
-  if (prevProps.colors !== nextProps.colors) return false;
-  if (prevProps.highlightOpacity !== nextProps.highlightOpacity) return false;
-  if (prevProps.onPress !== nextProps.onPress) return false;
-  if (prevProps.onLongPress !== nextProps.onLongPress) return false;
-  if (!areHighlightsEqual(prevProps.coverages, nextProps.coverages)) return false;
-  if (prevProps.isHighlightMode !== nextProps.isHighlightMode) return false;
-  if (prevProps.isEraseMode !== nextProps.isEraseMode) return false;
-  if (prevProps.selectedColor !== nextProps.selectedColor) return false;
-  if (prevProps.isDark !== nextProps.isDark) return false;
-  if (prevProps.pendingStartWord !== nextProps.pendingStartWord) return false;
-  if (prevProps.pendingCrossFullCoverage !== nextProps.pendingCrossFullCoverage) return false;
-  if (prevProps.onWordTap !== nextProps.onWordTap) return false;
-  if (prevProps.onRemoveHighlight !== nextProps.onRemoveHighlight) return false;
+const ParagraphItem = React.memo(ParagraphItemComponent);
 
-  return true;
-};
-
-const ParagraphItem = React.memo(ParagraphItemComponent, areParagraphPropsEqual);
-
-ParagraphItem.displayName = 'ParagraphItem';
-
+// Formata lista de números para exibir intervalos (ex: 1, 2, 3 -> "1-3")
 const formatNumberRanges = (numbers: number[]): string => {
-  const sorted = [...numbers].filter(n => Number.isFinite(n)).sort((a, b) => a - b);
-  if (sorted.length === 0) return '';
-
+  if (numbers.length === 0) return '';
+  const sorted = [...numbers].sort((a, b) => a - b);
   const ranges: string[] = [];
   let start = sorted[0];
-  let end = sorted[0];
+  let end = start;
 
   for (let i = 1; i < sorted.length; i++) {
     const n = sorted[i];
@@ -204,8 +183,44 @@ const formatNumberRanges = (numbers: number[]): string => {
   return ranges.join(', ');
 };
 
+const INTRO_PARAGRAPHS = [
+  {
+    number: 1,
+    label: oracoesJson.sinal_da_cruz.titulo,
+    text: oracoesJson.sinal_da_cruz.conteudo,
+  },
+  {
+    number: 2,
+    label: oracoesJson.oferecimento.titulo,
+    text: oracoesJson.oferecimento.conteudo,
+  },
+  {
+    number: 3,
+    label: oracoesJson.pai_nosso.titulo,
+    text: oracoesJson.pai_nosso.conteudo,
+  },
+  {
+    number: 4,
+    label: 'Três Ave-Marias',
+    text: `${oracoesJson.ave_maria.conteudo}\n\n(Rezar três vezes em honra à Santíssima Trindade por mais fé, esperança e caridade)`,
+  }
+];
+
+const CONCLUSAO_PARAGRAPHS = [
+  {
+    number: 1,
+    label: oracoesJson.agradecimento.titulo,
+    text: oracoesJson.agradecimento.conteudo,
+  },
+  {
+    number: 2,
+    label: oracoesJson.salve_rainha.titulo,
+    text: oracoesJson.salve_rainha.conteudo,
+  }
+];
+
 export default function ChapterScreen() {
-  const { slug, id, paragraph } = useLocalSearchParams<{ slug: string; id: string; paragraph?: string }>();
+  const { slug, id, paragraph, fluxo, completo, tipo } = useLocalSearchParams<{ slug: string; id: string; paragraph?: string; fluxo?: string; completo?: string; tipo?: string }>();
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
@@ -227,6 +242,10 @@ export default function ChapterScreen() {
     paragraphNumber: number;
     wordIndex: number;
   } | null>(null);
+
+  const [beadCount, setBeadCount] = useState(0);
+
+
 
   // Refs mutáveis para valores usados em callbacks estáveis
   const selectedParagraphsRef = useRef(selectedParagraphs);
@@ -277,6 +296,9 @@ export default function ChapterScreen() {
   // Converter ID para número
   const currentChapterId = parseInt(id || '1', 10);
 
+  const prevFluxoRef = useRef(fluxo);
+  const prevChapterIdRef = useRef(currentChapterId);
+
   // Carregar dados
   const book = getBookBySlug(slug);
   const chapter = book?.data.chapters.find(c => c.chapter === currentChapterId);
@@ -316,9 +338,13 @@ export default function ChapterScreen() {
     if (isCatecismo) return chapter?.name;
     if (isViaSacra) return viaSacraStationLabel ?? chapter?.name;
     if (isFrasesDeSantos) return chapter?.name;
-    if (isMisteriosTerco) return chapter?.name;
+    if (isMisteriosTerco) {
+      if (fluxo === 'intro') return 'Orações iniciais';
+      if (fluxo === 'conclusao') return 'Orações Finais';
+      return chapter?.name;
+    }
     return chapter?.name;
-  }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel]);
+  }, [isCatecismo, isViaSacra, isFrasesDeSantos, isMisteriosTerco, chapter?.name, viaSacraStationLabel, fluxo]);
 
   // Função para navegar para a Bíblia baseado em uma string de referência
   const handleNavigateToBible = useCallback((referencia: string) => {
@@ -382,10 +408,44 @@ export default function ChapterScreen() {
 
 
 
+  const range = useMemo(() => {
+    if (!isMisteriosTerco) return null;
+    if (completo === 'true') {
+      return { start: 1, end: 20, name: 'Santo Rosário Completo' };
+    }
+    if (currentChapterId >= 1 && currentChapterId <= 5) return { start: 1, end: 5, name: 'Mistérios Gozosos' };
+    if (currentChapterId >= 6 && currentChapterId <= 10) return { start: 6, end: 10, name: 'Mistérios Luminosos' };
+    if (currentChapterId >= 11 && currentChapterId <= 15) return { start: 11, end: 15, name: 'Mistérios Dolorosos' };
+    if (currentChapterId >= 16 && currentChapterId <= 20) return { start: 16, end: 20, name: 'Mistérios Gloriosos' };
+    return { start: 1, end: 5, name: 'Mistérios Gozosos' };
+  }, [isMisteriosTerco, currentChapterId, completo]);
+
   // Navegação entre capítulos
   const handlePrevChapter = () => {
     if (!book) return;
-    // Encontrar o índice atual
+
+    if (isMisteriosTerco && range) {
+      if (fluxo === 'intro') {
+        if (beadCount > 0) {
+          setBeadCount(prev => prev - 1);
+        }
+        return;
+      }
+      if (fluxo === 'conclusao') {
+        // Volta para o último mistério do grupo
+        router.setParams({ id: range.end.toString(), fluxo: '' });
+        return;
+      }
+      if (currentChapterId === range.start) {
+        // Volta para a introdução
+        router.setParams({ id: range.start.toString(), fluxo: 'intro' });
+        return;
+      }
+      // Navega para o mistério anterior
+      router.setParams({ id: (currentChapterId - 1).toString(), fluxo: '' });
+      return;
+    }
+
     const currentIndex = book.data.chapters.findIndex(c => c.chapter === currentChapterId);
     if (currentIndex > 0) {
       const prevChapter = book.data.chapters[currentIndex - 1];
@@ -395,7 +455,31 @@ export default function ChapterScreen() {
 
   const handleNextChapter = () => {
     if (!book) return;
-    // Encontrar o índice atual
+
+    if (isMisteriosTerco && range) {
+      if (fluxo === 'intro') {
+        if (beadCount < 6) {
+          setBeadCount(prev => prev + 1);
+        } else {
+          // Avança para o primeiro mistério
+          router.setParams({ id: range.start.toString(), fluxo: '' });
+        }
+        return;
+      }
+      if (fluxo === 'conclusao') {
+        // Já está na conclusão
+        return;
+      }
+      if (currentChapterId === range.end) {
+        // Vai para a conclusão
+        router.setParams({ id: range.end.toString(), fluxo: 'conclusao' });
+        return;
+      }
+      // Navega para o próximo mistério
+      router.setParams({ id: (currentChapterId + 1).toString(), fluxo: '' });
+      return;
+    }
+
     const currentIndex = book.data.chapters.findIndex(c => c.chapter === currentChapterId);
     if (currentIndex < book.data.chapters.length - 1) {
       const nextChapter = book.data.chapters[currentIndex + 1];
@@ -403,7 +487,11 @@ export default function ChapterScreen() {
     }
   };
 
-  // Resetar scroll e seleção ao mudar de capítulo
+  const handleFinish = () => {
+    router.replace('/');
+  };
+
+  // Resetar scroll e seleção ao mudar de capítulo ou fluxo
   useEffect(() => {
     if (flatListRef.current) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: false });
@@ -411,7 +499,17 @@ export default function ChapterScreen() {
     setSelectedParagraphs([]);
     setShowMenu(false);
     setLongPressActive(false);
-  }, [currentChapterId]);
+
+    // Inicia beadCount em 6 se veio de um mistério voltando para a introdução
+    if (isMisteriosTerco && fluxo === 'intro' && prevFluxoRef.current === '') {
+      setBeadCount(6);
+    } else {
+      setBeadCount(0);
+    }
+
+    prevFluxoRef.current = fluxo;
+    prevChapterIdRef.current = currentChapterId;
+  }, [currentChapterId, fluxo]);
 
   // Scroll até o parágrafo específico (deep link ou busca)
   useEffect(() => {
@@ -804,14 +902,103 @@ export default function ChapterScreen() {
   }
 
   const currentIndex = book.data.chapters.findIndex(c => c.chapter === currentChapterId);
-  const isFirstChapter = currentIndex === 0;
-  const isLastChapter = currentIndex === book.data.chapters.length - 1;
+  const isFirstChapter = isMisteriosTerco
+    ? (fluxo === 'intro' && beadCount === 0)
+    : currentIndex === 0;
+  const isLastChapter = isMisteriosTerco
+    ? fluxo === 'conclusao'
+    : currentIndex === book.data.chapters.length - 1;
+
+  const isNextDisabled = isLastChapter || (isMisteriosTerco && (
+    fluxo === 'intro' ? beadCount < 6 : (!fluxo && beadCount < 12)
+  ));
+
+  const currentIntroPrayer = useMemo(() => {
+    if (!isMisteriosTerco || fluxo !== 'intro') return null;
+    if (beadCount === 0) {
+      return {
+        titulo: oracoesJson.sinal_da_cruz.titulo,
+        conteudo: oracoesJson.sinal_da_cruz.conteudo,
+      };
+    } else if (beadCount === 1) {
+      return {
+        titulo: completo === 'true' ? oracoesJson.oferecimento_rosario.titulo : oracoesJson.oferecimento.titulo,
+        conteudo: completo === 'true' ? oracoesJson.oferecimento_rosario.conteudo : oracoesJson.oferecimento.conteudo,
+      };
+    } else if (beadCount === 2) {
+      return {
+        titulo: oracoesJson.creio.titulo,
+        conteudo: oracoesJson.creio.conteudo,
+      };
+    } else if (beadCount === 3) {
+      return {
+        titulo: oracoesJson.pai_nosso.titulo,
+        conteudo: oracoesJson.pai_nosso.conteudo,
+      };
+    } else if (beadCount === 4) {
+      return {
+        titulo: "1ª Ave Maria",
+        conteudo: "1ª Ave Maria em honra a Deus Pai para nos aumentar a fé.\n\n" + oracoesJson.ave_maria.conteudo,
+      };
+    } else if (beadCount === 5) {
+      return {
+        titulo: "2ª Ave Maria",
+        conteudo: "2ª Ave Maria em honra a Deus Filho para nos aumentar a esperança.\n\n" + oracoesJson.ave_maria.conteudo,
+      };
+    } else if (beadCount === 6) {
+      return {
+        titulo: "3ª Ave Maria",
+        conteudo: "3ª Ave Maria em honra a Deus Espírito Santo para nos aumentar a caridade.\n\n" + oracoesJson.ave_maria.conteudo,
+      };
+    }
+    return null;
+  }, [isMisteriosTerco, fluxo, beadCount]);
+
+  const currentMysteryPrayer = useMemo(() => {
+    if (!isMisteriosTerco || fluxo) return null;
+    if (beadCount === 0) {
+      return {
+        titulo: oracoesJson.pai_nosso.titulo,
+        conteudo: oracoesJson.pai_nosso.conteudo,
+      };
+    } else if (beadCount >= 1 && beadCount <= 10) {
+      return {
+        titulo: `${oracoesJson.ave_maria.titulo} (${beadCount}/10)`,
+        conteudo: oracoesJson.ave_maria.conteudo,
+      };
+    } else if (beadCount === 11) {
+      return {
+        titulo: oracoesJson.gloria.titulo,
+        conteudo: oracoesJson.gloria.conteudo,
+      };
+    } else if (beadCount === 12) {
+      return {
+        titulo: oracoesJson.jaculatoria.titulo,
+        conteudo: oracoesJson.jaculatoria.conteudo,
+      };
+    }
+    return null;
+  }, [isMisteriosTerco, fluxo, beadCount]);
+
+  const dataToRender = useMemo(() => {
+    if (isMisteriosTerco) {
+      if (fluxo === 'intro') {
+        return currentIntroPrayer ? [{ number: beadCount + 1, label: currentIntroPrayer.titulo, text: currentIntroPrayer.conteudo }] : [];
+      }
+      if (fluxo === 'conclusao') return CONCLUSAO_PARAGRAPHS;
+    }
+    return chapter?.paragraphs || [];
+  }, [isMisteriosTerco, fluxo, chapter, currentIntroPrayer, beadCount]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
-          title: isCatecismo ? 'Catecismo' : book.title,
+          title: isCatecismo
+            ? 'Catecismo'
+            : isMisteriosTerco
+              ? (tipo === 'terco' ? 'Terço' : 'Mistérios do Rosário')
+              : book.title,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
           headerShadowVisible: false,
@@ -871,17 +1058,154 @@ export default function ChapterScreen() {
           </Text>
         </View>
 
-        <Pressable
-          onPress={handleNextChapter}
-          disabled={isLastChapter}
-          style={[styles.navButton, isLastChapter && styles.navButtonDisabled]}
-        >
-          <Text style={[styles.navButtonText, { color: isLastChapter ? colors.textMuted : colors.primary }]}>
-            Próximo
-          </Text>
-          <Ionicons name="chevron-forward" size={24} color={isLastChapter ? colors.textMuted : colors.primary} />
-        </Pressable>
+        {isMisteriosTerco && fluxo === 'conclusao' ? (
+          <Pressable
+            onPress={handleFinish}
+            style={styles.navButton}
+          >
+            <Text style={[styles.navButtonText, { color: colors.primary }]}>
+              Concluir
+            </Text>
+            <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleNextChapter}
+            disabled={isNextDisabled}
+            style={[styles.navButton, isNextDisabled && styles.navButtonDisabled]}
+          >
+            <Text style={[styles.navButtonText, { color: isNextDisabled ? colors.textMuted : colors.primary }]}>
+              Próximo
+            </Text>
+            <Ionicons name="chevron-forward" size={24} color={isNextDisabled ? colors.textMuted : colors.primary} />
+          </Pressable>
+        )}
       </View>
+
+      {/* Contagem por dezena (bolinhas) ou orações iniciais */}
+      {isMisteriosTerco && (fluxo === 'intro' || !fluxo) && (
+        <View style={[styles.beadsContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          {fluxo === 'intro' ? (
+            <>
+              {beadCount <= 2 ? (
+                <View style={styles.crossIndicatorContainer}>
+                  <MaterialCommunityIcons name="cross" size={24} color={colors.primary} />
+                </View>
+              ) : (
+                <View style={styles.beadsRow}>
+                  {/* Bolinha do Pai Nosso (Índice 3) */}
+                  <View
+                    style={[
+                      styles.bead,
+                      styles.beadLarge,
+                      {
+                        borderColor: beadCount >= 4 ? colors.primary : colors.textMuted,
+                        backgroundColor: beadCount >= 4 ? colors.primary : colors.surfaceLight,
+                      },
+                      beadCount === 3 && {
+                        borderWidth: 2,
+                        borderColor: colors.primary,
+                        transform: [{ scale: 1.15 }],
+                      }
+                    ]}
+                  />
+
+                  {/* Bolinhas das 3 Ave-Marias (Índices 4 a 6) */}
+                  {Array.from({ length: 3 }).map((_, index) => {
+                    const beadIndex = index + 4;
+                    const isPrayed = beadIndex < beadCount;
+                    const isCurrent = beadIndex === beadCount;
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.bead,
+                          {
+                            borderColor: isPrayed ? colors.primary : colors.textMuted,
+                            backgroundColor: isPrayed ? colors.primary : colors.surfaceLight,
+                          },
+                          isCurrent && {
+                            borderWidth: 2,
+                            borderColor: colors.primary,
+                            transform: [{ scale: 1.15 }],
+                          }
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+              <Text style={[styles.beadsCountText, { color: colors.textSecondary }]}>
+                {beadCount === 0
+                  ? 'Sinal da Cruz'
+                  : beadCount === 1
+                    ? 'Oferecimento'
+                    : beadCount === 2
+                      ? 'Creio'
+                      : beadCount === 3
+                        ? 'Pai Nosso'
+                        : `${beadCount - 3}ª Ave Maria`}
+              </Text>
+            </>
+          ) : (
+            <>
+              {beadCount <= 10 && (
+                <View style={styles.beadsRow}>
+                  {/* Bolinha do Pai Nosso (Índice 0) */}
+                  <View
+                    style={[
+                      styles.bead,
+                      styles.beadLarge,
+                      {
+                        borderColor: beadCount >= 1 ? colors.primary : colors.textMuted,
+                        backgroundColor: beadCount >= 1 ? colors.primary : colors.surfaceLight,
+                      },
+                      beadCount === 0 && {
+                        borderWidth: 2,
+                        borderColor: colors.primary,
+                        transform: [{ scale: 1.15 }],
+                      }
+                    ]}
+                  />
+
+                  {/* Bolinhas das Ave-Marias (Índices 1 a 10) */}
+                  {Array.from({ length: 10 }).map((_, index) => {
+                    const beadIndex = index + 1;
+                    const isPrayed = beadIndex < beadCount;
+                    const isCurrent = beadIndex === beadCount;
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.bead,
+                          {
+                            borderColor: isPrayed ? colors.primary : colors.textMuted,
+                            backgroundColor: isPrayed ? colors.primary : colors.surfaceLight,
+                          },
+                          isCurrent && {
+                            borderWidth: 2,
+                            borderColor: colors.primary,
+                            transform: [{ scale: 1.15 }],
+                      }
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+              <Text style={[styles.beadsCountText, { color: colors.textSecondary }]}>
+                {beadCount === 0
+                  ? 'Pai Nosso'
+                  : beadCount <= 10
+                    ? `${beadCount} / 10 Ave-Marias`
+                    : beadCount === 11
+                      ? 'Glória ao Pai'
+                      : 'Ó meu Jesus'}
+              </Text>
+            </>
+          )}
+        </View>
+      )}
 
       {/* Menu Flutuante */}
       {!isViaSacra && !isMisteriosTerco && !isHighlightMode && showMenu && selectedParagraphs.length > 0 && (
@@ -926,10 +1250,12 @@ export default function ChapterScreen() {
       {/* Lista de Parágrafos */}
       <FlatList
         ref={flatListRef}
-        data={chapter.paragraphs}
+        data={dataToRender}
         keyExtractor={(item) => item.number.toString()}
         ListHeaderComponent={
-          (isViaSacra && viaSacraImage) || (isMisteriosTerco && rosarioImage) ? (
+          isMisteriosTerco && fluxo ? (
+            <View></View>
+          ) : (isViaSacra && viaSacraImage) || (isMisteriosTerco && !fluxo && rosarioImage) ? (
             <View style={styles.viaSacraHeader}>
               {isMisteriosTerco ? (
                 <View style={styles.mysteryTitleHeader}>
@@ -970,18 +1296,28 @@ export default function ChapterScreen() {
               <View style={styles.viaSacraField}>
                 {isMisterioItem ? (
                   <>
-                    {/* Seção: Meditação */}
+                    {/* Seção: Meditação ou Oração */}
                     <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={styles.mysterySectionHeader}>
-                        <Ionicons name="book" size={18} color={colors.primary} />
-                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Meditação</Text>
+                        <MaterialCommunityIcons 
+                          name={
+                            fluxo 
+                              ? (item.label?.toLowerCase().includes('cruz') ? 'cross' : 'hands-pray') 
+                              : 'book-open-variant'
+                          } 
+                          size={18} 
+                          color={colors.primary} 
+                        />
+                        <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>
+                          {fluxo ? item.label : 'Meditação'}
+                        </Text>
                       </View>
-                      <Text style={[styles.misterioText, { color: colors.text }]}>
+                      <Text style={[styles.misterioText, { color: colors.text, fontSize: 16, lineHeight: 24 }]}>
                         {item.text}
                       </Text>
                     </View>
 
-                    {isMisteriosTerco && (() => {
+                    {isMisteriosTerco && !fluxo && (() => {
                       const mystery = findMysteryByGlobalIndex(currentChapterId - 1);
                       if (!mystery) return null;
                       return (
@@ -1014,33 +1350,22 @@ export default function ChapterScreen() {
                             </View>
                           ) : null}
 
-                          {/* Seção: Orações */}
-                          <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                            <View style={styles.mysterySectionHeader}>
-                              <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
-                              <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>Orações</Text>
-                            </View>
-                            {(mystery.oracoes?.pai_nosso || mystery.oracoes?.ave_marias) ? (
-                              <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
-                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>
-                                  {mystery.oracoes?.pai_nosso ? mystery.oracoes.pai_nosso : ''}{mystery.oracoes?.ave_marias ? '  •  ' + mystery.oracoes.ave_marias : ''}
+                          {/* Seção: Orações (espelhando a oração atual) */}
+                          {currentMysteryPrayer ? (
+                            <View style={[styles.mysterySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                              <View style={styles.mysterySectionHeader}>
+                                <MaterialCommunityIcons name="hands-pray" size={18} color={colors.primary} />
+                                <Text style={[styles.mysterySectionTitle, { color: colors.primary }]}>
+                                  {currentMysteryPrayer.titulo}
                                 </Text>
                               </View>
-                            ) : null}
-                            {mystery.oracoes?.gloria ? (
-                              <View style={[styles.mysteryPrayerRow, { borderBottomColor: colors.divider }]}>
-                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.gloria}</Text>
+                              <View style={{ paddingVertical: spacing.xs }}>
+                                <Text style={[styles.misterioText, { color: colors.text, fontSize: 16, lineHeight: 24 }]}>
+                                  {currentMysteryPrayer.conteudo}
+                                </Text>
                               </View>
-                            ) : null}
-                            {mystery.oracoes?.jaculatoria ? (
-                              <View style={styles.mysteryPrayerRow}>
-                                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 7 }} />
-                                <Text style={[styles.mysteryPrayerTextStyled, { color: colors.text }]}>{mystery.oracoes.jaculatoria}</Text>
-                              </View>
-                            ) : null}
-                          </View>
+                            </View>
+                          ) : null}
                         </>
                       );
                     })()}
@@ -1205,6 +1530,40 @@ export default function ChapterScreen() {
           }}
           colors={colors}
         />
+      )}
+      {/* Botão flutuante para avançar as contas ou mudar de capítulo */}
+      {isMisteriosTerco && (fluxo === 'intro' || !fluxo) && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.fab,
+            {
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            },
+          ]}
+          onPress={async () => {
+            const limit = fluxo === 'intro' ? 6 : 12;
+            if (beadCount < limit) {
+              const nextCount = beadCount + 1;
+              setBeadCount(nextCount);
+              if (nextCount === limit) {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } else {
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+            } else {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              handleNextChapter();
+            }
+          }}
+        >
+          <MaterialCommunityIcons 
+            name={beadCount < (fluxo === 'intro' ? 6 : 12) ? "plus" : "chevron-right"} 
+            size={28} 
+            color="#fff" 
+          />
+        </Pressable>
       )}
 
     </View>
@@ -1580,5 +1939,55 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  beadsContainer: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    gap: spacing.xs,
+  },
+  crossIndicatorContainer: {
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  beadsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  bead: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+  },
+  beadLarge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  beadsCountText: {
+    ...typography.caption,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  fab: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
   },
 });
