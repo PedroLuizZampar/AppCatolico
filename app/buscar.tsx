@@ -5,18 +5,51 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchBar } from '@/components/SearchBar';
-import { searchInBooks } from '@/lib/data';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors, spacing, typography, borderRadius, shadows } from '@/lib/theme/tokens';
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
-  
-  const results = searchInBooks(query);
+
+  React.useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    const delayDebounceFn = setTimeout(() => {
+      import('@/lib/sqlite/sqliteDatabase')
+        .then(({ searchInBooksFromDb }) => searchInBooksFromDb(query))
+        .then(res => {
+          import('@/lib/data').then(({ getBookBySlug }) => {
+            const mapped = res.map(r => {
+              const bookData = getBookBySlug(r.bookSlug);
+              return {
+                book: bookData,
+                chapter: r.chapter,
+                chapterName: r.chapterName,
+                paragraph: r.paragraph,
+                text: r.text
+              };
+            }).filter(item => item.book !== undefined);
+            setResults(mapped);
+            setSearching(false);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          setSearching(false);
+        });
+    }, 200);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

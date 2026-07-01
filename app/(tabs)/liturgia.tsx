@@ -1,5 +1,10 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
+import { CalendarModal } from '@/components/CalendarModal';
+import { ErrorState } from '@/components/ErrorState';
+import { useSelectedDate } from '@/lib/context/DateContext';
+import { getLiturgiaCache, saveLiturgiaCache } from '@/lib/sqlite/sqliteDatabase';
+import { formatDateISO } from '@/lib/santoDoDia';
 import { capitalizeWordsExceptDe, formatDatePT } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -50,8 +55,7 @@ interface LiturgyData {
   };
 }
 
-// --- API ---
-const API_URL = 'https://liturgia.up.railway.app/v2/';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-sanctus.onrender.com';
 
 // --- Mapeamento de Cores ---
 const liturgicalColorMap: { [key: string]: string } = {
@@ -403,203 +407,7 @@ const SalmoPage: React.FC<SalmoPageProps> = ({ data, isDark }) => {
   );
 };
 
-// --- Componente de Calendário Simples ---
-interface CalendarModalProps {
-  visible: boolean;
-  selectedDate: Date;
-  onClose: () => void;
-  onSelectDate: (date: Date) => void;
-  isDark: boolean;
-}
 
-const CalendarModal: React.FC<CalendarModalProps> = ({ 
-  visible, 
-  selectedDate, 
-  onClose, 
-  onSelectDate,
-  isDark 
-}) => {
-  const colors = getColors(isDark);
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
-
-  const daysInMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
-    0
-  ).getDate();
-
-  const firstDayOfMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth(),
-    1
-  ).getDay();
-
-  const monthNames = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-  const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-  };
-
-  const handleSelectDate = (day: number) => {
-    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    onSelectDate(newDate);
-    onClose();
-  };
-
-  const handleQuickSelect = (date: Date) => {
-    setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
-    onSelectDate(date);
-    onClose();
-  };
-
-  const getNextSunday = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-    const nextSunday = new Date(today);
-    nextSunday.setDate(today.getDate() + daysUntilSunday);
-    return nextSunday;
-  };
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const nextSunday = getNextSunday();
-
-  const renderCalendarDays = () => {
-    const days = [];
-    
-    // Espaços vazios antes do primeiro dia
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.calendarDay} />);
-    }
-
-    // Dias do mês
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isSelected = 
-        day === selectedDate.getDate() &&
-        currentMonth.getMonth() === selectedDate.getMonth() &&
-        currentMonth.getFullYear() === selectedDate.getFullYear();
-
-      const isToday = 
-        day === new Date().getDate() &&
-        currentMonth.getMonth() === new Date().getMonth() &&
-        currentMonth.getFullYear() === new Date().getFullYear();
-
-      days.push(
-        <Pressable
-          key={day}
-          style={[
-            styles.calendarDay,
-            isSelected && { backgroundColor: colors.primary, borderRadius: borderRadius.sm }
-          ]}
-          onPress={() => handleSelectDate(day)}
-        >
-          <Text
-            style={[
-              styles.calendarDayText,
-              { color: isSelected ? '#fff' : colors.text },
-              isToday && !isSelected && { 
-                color: colors.primary, 
-                fontWeight: 'bold',
-                textDecorationLine: 'underline'
-              }
-            ]}
-          >
-            {day}
-          </Text>
-        </Pressable>
-      );
-    }
-
-    return days;
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable 
-          style={[styles.calendarContainer, { backgroundColor: colors.surface }]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          {/* Atalhos Rápidos */}
-          <View style={styles.quickSelectContainer}>
-            <Pressable 
-              style={[styles.quickSelectButton, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
-              onPress={() => handleQuickSelect(new Date())}
-            >
-              <Ionicons name="today" size={18} color={colors.primary} />
-              <Text style={[styles.quickSelectText, { color: colors.primary }]}>Hoje</Text>
-            </Pressable>
-            <Pressable 
-              style={[styles.quickSelectButton, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
-              onPress={() => handleQuickSelect(tomorrow)}
-            >
-              <Ionicons name="sunny" size={18} color={colors.text} />
-              <Text style={[styles.quickSelectText, { color: colors.text }]}>Amanhã</Text>
-            </Pressable>
-            <Pressable 
-              style={[styles.quickSelectButton, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
-              onPress={() => handleQuickSelect(nextSunday)}
-            >
-              <Ionicons name="medal" size={18} color={colors.text} />
-              <Text style={[styles.quickSelectText, { color: colors.text }]}>Domingo</Text>
-            </Pressable>
-          </View>
-
-          {/* Header do calendário */}
-          <View style={styles.calendarHeader}>
-            <Pressable onPress={handlePrevMonth} hitSlop={10}>
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
-            </Pressable>
-            <Text style={[styles.calendarMonth, { color: colors.text }]}>
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </Text>
-            <Pressable onPress={handleNextMonth} hitSlop={10}>
-              <Ionicons name="chevron-forward" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-
-          {/* Dias da semana */}
-          <View style={styles.weekDaysContainer}>
-            {weekDays.map((day) => (
-              <Text key={day} style={[styles.weekDay, { color: colors.textSecondary }]}>
-                {day}
-              </Text>
-            ))}
-          </View>
-
-          {/* Grid de dias */}
-          <View style={styles.daysGrid}>
-            {renderCalendarDays()}
-          </View>
-
-          {/* Botão fechar */}
-          <Pressable 
-            style={[styles.closeButton, { backgroundColor: colors.surfaceLight }]}
-            onPress={onClose}
-          >
-            <Text style={[styles.closeButtonText, { color: colors.text }]}>Fechar</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-};
 
 // Converte nome ordinal por extenso (API) para formato "n° Leitura"
 const ordinalMap: Record<string, string> = {
@@ -620,7 +428,7 @@ export default function LiturgiaScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [liturgy, setLiturgy] = useState<LiturgyData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const [navOverflow, setNavOverflow] = useState<boolean | null>(null);
@@ -630,30 +438,51 @@ export default function LiturgiaScreen() {
   const colors = getColors(isDark);
 
   const fetchLiturgy = async (date: Date) => {
+    const dateStr = formatDateISO(date);
     try {
       setError(null);
-      
-      // Construir URL com query params
-      const day = date.getDate();
-      const month = date.getMonth() + 1;
-      const year = date.getFullYear();
-      
-      const url = `${API_URL}?dia=${day}&mes=${month}&ano=${year}`;
-      
+
+      // 1. Tentar ler do SQLite local (Offline)
+      const cached = await getLiturgiaCache(dateStr);
+      if (cached) {
+        setLiturgy(cached);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Se não estiver no cache, chamar a nossa API Sanctus
+      const url = `${API_BASE_URL}/api/v1/liturgia?date=${dateStr}`;
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
         },
       });
-      
+
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404');
+        }
         throw new Error(`Erro HTTP: ${response.status}`);
       }
-      
+
       const json = await response.json();
       setLiturgy(json);
-    } catch {
-      setError('Não foi possível carregar a liturgia. Verifique sua conexão.');
+
+      // Salvar no SQLite local silenciosamente
+      await saveLiturgiaCache(dateStr, JSON.stringify(json));
+    } catch (err: any) {
+      console.warn('[Liturgia] Erro ao obter dados do servidor:', err);
+      const cachedFallback = await getLiturgiaCache(dateStr);
+      if (cachedFallback) {
+        setLiturgy(cachedFallback);
+      } else {
+        setLiturgy(null);
+        if (err.message === '404') {
+          setError('Não existem registros de Liturgia Diária para a data selecionada.');
+        } else {
+          setError('Não foi possível obter a liturgia para a data selecionada. Verifique sua conexão com a internet.');
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -781,24 +610,14 @@ export default function LiturgiaScreen() {
 
   if (error || !liturgy) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle" size={64} color={colors.textSecondary} />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>
-          Erro ao carregar liturgia
-        </Text>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error || 'Dados não encontrados.'}
-        </Text>
-        <Pressable 
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            setLoading(true);
-            fetchLiturgy(selectedDate);
-          }}
-        >
-          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Erro ao carregar liturgia"
+        message={error || 'Dados não encontrados.'}
+        onRetry={() => {
+          setLoading(true);
+          fetchLiturgy(selectedDate);
+        }}
+      />
     );
   }
 
@@ -811,7 +630,6 @@ export default function LiturgiaScreen() {
         selectedDate={selectedDate}
         onClose={() => setShowCalendar(false)}
         onSelectDate={handleDateSelect}
-        isDark={isDark}
       />
 
       {/* Cabeçalho centralizado */}
@@ -835,8 +653,8 @@ export default function LiturgiaScreen() {
               { backgroundColor: liturgyColor, borderColor: colors.border }
             ]} 
           />
-          <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+          <Ionicons name="calendar" size={16} color={colors.primary} />
+          <Text style={[styles.dateText, { color: colors.primary }]}>
             {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
           </Text>
         </Pressable>

@@ -1,22 +1,31 @@
 import { useState, useEffect } from 'react';
 import { favoritesSyncService } from '../sync/FavoritesSyncService';
 import { FavoriteParagraph } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { syncEngine } from '../sync/SyncEngine';
 
 export function useFavoritesSync() {
   const [favorites, setFavorites] = useState<FavoriteParagraph[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    loadFavorites();
-    
-    // Polling para atualizar favoritos - reduzido para 5 segundos
-    const interval = setInterval(loadFavorites, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (user) {
+      loadFavorites();
+      
+      // Polling para atualizar favoritos locais - reduzido para 5 segundos
+      const interval = setInterval(loadFavorites, 5000);
+      return () => clearInterval(interval);
+    } else {
+      setFavorites([]);
+      setLoading(false);
+    }
+  }, [user]);
 
   const loadFavorites = async () => {
+    if (!user) return;
     try {
-      const stored = await favoritesSyncService.getLocalFavorites();
+      const stored = await favoritesSyncService.getLocalFavorites(user.id);
       setFavorites(stored);
     } catch (error) {
       console.error('Erro ao carregar favoritos:', error);
@@ -26,9 +35,11 @@ export function useFavoritesSync() {
   };
 
   const addFavorite = async (favorite: FavoriteParagraph) => {
+    if (!user) return;
     try {
-      await favoritesSyncService.addFavorite(favorite);
+      await favoritesSyncService.addFavorite(user.id, favorite);
       await loadFavorites();
+      syncEngine.sync().catch(err => console.error('[useFavoritesSync] Erro no sync pós add:', err));
     } catch (error) {
       console.error('Erro ao adicionar favorito:', error);
       throw error;
@@ -36,9 +47,11 @@ export function useFavoritesSync() {
   };
 
   const addFavorites = async (newFavorites: FavoriteParagraph[]) => {
+    if (!user) return;
     try {
-      await favoritesSyncService.addFavorites(newFavorites);
+      await favoritesSyncService.addFavorites(user.id, newFavorites);
       await loadFavorites();
+      syncEngine.sync().catch(err => console.error('[useFavoritesSync] Erro no sync pós add em lote:', err));
     } catch (error) {
       console.error('Erro ao adicionar múltiplos favoritos:', error);
       throw error;
@@ -46,9 +59,11 @@ export function useFavoritesSync() {
   };
 
   const removeFavorite = async (favorite: FavoriteParagraph) => {
+    if (!user) return;
     try {
-      await favoritesSyncService.removeFavorite(favorite);
+      await favoritesSyncService.removeFavorite(user.id, favorite);
       await loadFavorites();
+      syncEngine.sync().catch(err => console.error('[useFavoritesSync] Erro no sync pós remove:', err));
     } catch (error) {
       console.error('Erro ao remover favorito:', error);
       throw error;
@@ -56,9 +71,11 @@ export function useFavoritesSync() {
   };
 
   const removeFavorites = async (favoritesToRemove: FavoriteParagraph[]) => {
+    if (!user) return;
     try {
-      await favoritesSyncService.removeFavorites(favoritesToRemove);
+      await favoritesSyncService.removeFavorites(user.id, favoritesToRemove);
       await loadFavorites();
+      syncEngine.sync().catch(err => console.error('[useFavoritesSync] Erro no sync pós remove em lote:', err));
     } catch (error) {
       console.error('Erro ao remover múltiplos favoritos:', error);
       throw error;
@@ -66,9 +83,11 @@ export function useFavoritesSync() {
   };
 
   const clearAll = async () => {
+    if (!user) return;
     try {
-      await favoritesSyncService.clearAllFavorites();
+      await favoritesSyncService.clearAllFavorites(user.id);
       await loadFavorites();
+      syncEngine.sync().catch(err => console.error('[useFavoritesSync] Erro no sync pós clear:', err));
     } catch (error) {
       console.error('Erro ao limpar favoritos:', error);
       throw error;
@@ -76,13 +95,14 @@ export function useFavoritesSync() {
   };
 
   const syncFavorites = async () => {
-    // No-op: Sync removido
+    await syncEngine.sync();
     await loadFavorites();
   };
 
   const cleanDuplicates = async () => {
+    if (!user) return 0;
     try {
-      const removed = await favoritesSyncService.cleanDuplicates();
+      const removed = await favoritesSyncService.cleanDuplicates(user.id);
       await loadFavorites();
       return removed;
     } catch (error) {

@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Modal,
   Dimensions,
   Animated,
@@ -22,11 +21,14 @@ import AnimatedReanimated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '@/lib/context/AlertContext';
 
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors, spacing, typography, borderRadius } from '@/lib/theme/tokens';
 import { magisteriumService } from '@/lib/services/magisteriumService';
 import { magisteriumHistoryService } from '@/lib/services/magisteriumHistoryService';
+import { useAuth } from '@/lib/context/AuthContext';
+import { syncEngine } from '@/lib/sync/SyncEngine';
 import { Message, Citation, MessageUI, MagisteriumChat } from '@/lib/types/magisterium';
 import { copyToClipboard } from '@/lib/webShare';
 
@@ -41,6 +43,8 @@ const INITIAL_MESSAGE: Message = {
 export default function ChatScreen() {
   const { isDark } = useTheme();
   const colors = getColors(isDark);
+  const { user } = useAuth();
+  const { showAlert } = useAlert();
 
   const [chats, setChats] = useState<MagisteriumChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -85,10 +89,10 @@ export default function ChatScreen() {
 
   // Carrega todos os chats locais e define o ativo se solicitado
   const loadChats = useCallback(async (selectChatId?: string) => {
-    if (isInitializing.current) return;
+    if (!user || isInitializing.current) return;
     isInitializing.current = true;
     try {
-      const storedChats = await magisteriumHistoryService.getChats();
+      const storedChats = await magisteriumHistoryService.getChats(user.id);
       setChats(storedChats);
       
       if (selectChatId) {
@@ -111,23 +115,28 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+    if (user) {
+      loadChats();
+    }
+  }, [user, loadChats]);
 
 
   // Exclui um chat do histórico
   const handleDeleteChat = (chatId: string) => {
-    Alert.alert(
-      'Apagar Conversa',
-      'Tem certeza de que deseja excluir permanentemente esta conversa?',
-      [
+    showAlert({
+      title: 'Apagar Conversa',
+      message: 'Tem certeza de que deseja excluir permanentemente esta conversa?',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
             try {
-              await magisteriumHistoryService.deleteChat(chatId);
+              if (user) {
+                await magisteriumHistoryService.deleteChat(user.id, chatId);
+                syncEngine.sync().catch(err => console.error('[Chat] Erro no sync pós delete:', err));
+              }
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               
               if (chatId === activeChatId) {
@@ -149,7 +158,7 @@ export default function ChatScreen() {
           }
         }
       ]
-    );
+    });
   };
 
   const startRenameChat = (chatId: string, currentTitle: string) => {
@@ -161,13 +170,16 @@ export default function ChatScreen() {
   const handleConfirmRename = async () => {
     if (!renameTargetId || !renameText.trim()) return;
     try {
-      await magisteriumHistoryService.renameChat(renameTargetId, renameText.trim());
-      setIsRenameVisible(false);
-      setRenameTargetId(null);
-      setRenameText('');
-      
-      const updatedChats = await magisteriumHistoryService.getChats();
-      setChats(updatedChats);
+      if (user) {
+        await magisteriumHistoryService.renameChat(user.id, renameTargetId, renameText.trim());
+        setIsRenameVisible(false);
+        setRenameTargetId(null);
+        setRenameText('');
+        
+        const updatedChats = await magisteriumHistoryService.getChats(user.id);
+        setChats(updatedChats);
+        syncEngine.sync().catch(err => console.error('[Chat] Erro no sync pós rename:', err));
+      }
     } catch (error) {
       console.error('Erro ao renomear chat:', error);
     }
@@ -250,10 +262,13 @@ export default function ChatScreen() {
         };
       }
 
-      await magisteriumHistoryService.saveChat(updatedChat);
-      
-      const updatedList = await magisteriumHistoryService.getChats();
-      setChats(updatedList);
+      if (user) {
+        await magisteriumHistoryService.saveChat(user.id, updatedChat);
+        
+        const updatedList = await magisteriumHistoryService.getChats(user.id);
+        setChats(updatedList);
+        syncEngine.sync().catch(err => console.error('[Chat] Erro no sync pós enviar mensagem:', err));
+      }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
@@ -289,10 +304,13 @@ export default function ChatScreen() {
           messages: finalMessages,
         };
       }
-      await magisteriumHistoryService.saveChat(updatedChat);
+      if (user) {
+        await magisteriumHistoryService.saveChat(user.id, updatedChat);
 
-      const updatedList = await magisteriumHistoryService.getChats();
-      setChats(updatedList);
+        const updatedList = await magisteriumHistoryService.getChats(user.id);
+        setChats(updatedList);
+        syncEngine.sync().catch(err => console.error('[Chat] Erro no sync pós falha no envio:', err));
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);

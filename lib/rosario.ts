@@ -31,8 +31,9 @@ export const getRosarioImageSource = (index: number): ImageSourcePropType | unde
   return ROSARIO_IMAGE_SOURCES[index];
 };
 
-export const getTodayMisteriosStartId = (): number => {
-  const day = new Date().getDay(); // 0: Domingo, 1: Segunda, etc.
+export const getTodayMisteriosStartId = (date?: Date): number => {
+  const targetDate = date || new Date();
+  const day = targetDate.getDay(); // 0: Domingo, 1: Segunda, etc.
   switch (day) {
     case 1: // Segunda-feira
     case 6: // Sábado

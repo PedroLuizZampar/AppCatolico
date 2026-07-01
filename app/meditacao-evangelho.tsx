@@ -1,4 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { CalendarModal } from '@/components/CalendarModal';
+import { ErrorState } from '@/components/ErrorState';
+import { formatDateISO } from '@/lib/santoDoDia';
+import { capitalizeWordsExceptDe, formatDatePT } from '@/lib/utils';
+import { useSelectedDate } from '@/lib/context/DateContext';
+import { getMeditacaoCache, saveMeditacaoCache } from '@/lib/sqlite/sqliteDatabase';
 import {
   StyleSheet,
   View,
@@ -282,8 +288,11 @@ export default function MeditacaoEvangelhoScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { selectedDate, setSelectedDate } = useSelectedDate();
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
 
-  const fetchMeditationFromApi = async (isBackground = false) => {
+  const fetchMeditationFromApi = async (dateObj: Date, isBackground = false) => {
+    const dateStr = formatDateISO(dateObj);
     if (!isBackground) {
       setLoading(true);
     } else {
@@ -292,24 +301,34 @@ export default function MeditacaoEvangelhoScreen() {
     setError(null);
 
     try {
-      const url = getApiUrl('/api/v1/meditacao');
+      const url = getApiUrl(`/api/v1/meditacao?date=${dateStr}`);
       const response = await fetch(url);
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404');
+        }
         throw new Error(`Erro na API: ${response.status}`);
       }
       const data = await response.json();
       if (data && data.markdown) {
-        if (data.markdown !== meditation) {
-          setMeditation(data.markdown);
-          await AsyncStorage.setItem('@meditacao_evangelho_cache', data.markdown);
-        }
+        setMeditation(data.markdown);
+        await saveMeditacaoCache(dateStr, data.markdown);
       } else {
         throw new Error('Resposta do servidor em formato inválido.');
       }
     } catch (err: any) {
-      console.error('[Evangelho] Erro ao buscar dados da API:', err);
-      if (!meditation) {
-        setError('Não foi possível carregar a meditação do Evangelho. Verifique sua conexão e tente novamente.');
+      console.warn('[Evangelho] Erro ao buscar dados da API:', err);
+      // Tentar carregar do cache local antes de disparar erro
+      const cached = await getMeditacaoCache(dateStr);
+      if (cached) {
+        setMeditation(cached);
+      } else if (!isBackground) {
+        setMeditation(null);
+        if (err.message === '404') {
+          setError('Não existem registros de meditação do Evangelho para a data selecionada.');
+        } else {
+          setError('Não foi possível obter a meditação para a data selecionada. Verifique sua conexão com a internet.');
+        }
       }
     } finally {
       setLoading(false);
@@ -317,26 +336,25 @@ export default function MeditacaoEvangelhoScreen() {
     }
   };
 
-  // Carrega meditação do AsyncStorage e inicia a busca na API
   useEffect(() => {
-    AsyncStorage.getItem('@meditacao_evangelho_cache')
+    const dateStr = formatDateISO(selectedDate);
+    getMeditacaoCache(dateStr)
       .then((cached) => {
         if (cached) {
           setMeditation(cached);
           setLoading(false);
-          // Inicia atualização silenciosa em background se já houver cache
-          fetchMeditationFromApi(true);
+          fetchMeditationFromApi(selectedDate, true);
         } else {
-          fetchMeditationFromApi(false);
+          fetchMeditationFromApi(selectedDate, false);
         }
       })
       .catch(() => {
-        fetchMeditationFromApi(false);
+        fetchMeditationFromApi(selectedDate, false);
       });
-  }, []);
+  }, [selectedDate]);
 
   const handleRetry = () => {
-    fetchMeditationFromApi(false);
+    fetchMeditationFromApi(selectedDate, false);
   };
 
   const showLoader = loading && !meditation;
@@ -368,9 +386,15 @@ export default function MeditacaoEvangelhoScreen() {
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Evangelho Meditado</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Reflexão Diária</Text>
-          <Text style={[styles.description, { color: colors.textMuted }]}>
-            Acompanhe diariamente a meditação do Evangelho guiada e comentada.
-          </Text>
+          <Pressable 
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md }}
+            onPress={() => setShowCalendar(true)}
+          >
+            <Ionicons name="calendar" size={16} color={colors.primary} />
+            <Text style={[typography.body, { color: colors.primary, fontWeight: '500' }]}>
+              {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
+            </Text>
+          </Pressable>
         </Animated.View>
 
         {showLoader && (
@@ -383,17 +407,11 @@ export default function MeditacaoEvangelhoScreen() {
         )}
 
         {error && !meditation && !loading && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
-            <Text style={[styles.errorTitle, { color: colors.text, textAlign: 'center', marginBottom: spacing.md }]}>Erro ao obter meditação</Text>
-            <Text style={[styles.errorText, { color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }]}>{error}</Text>
-            <Pressable
-              onPress={handleRetry}
-              style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            >
-              <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-            </Pressable>
-          </View>
+          <ErrorState
+            title="Erro ao obter meditação"
+            message={error}
+            onRetry={handleRetry}
+          />
         )}
 
         {meditation && (
@@ -405,6 +423,13 @@ export default function MeditacaoEvangelhoScreen() {
           </Animated.View>
         )}
       </ScrollView>
+
+      <CalendarModal
+        visible={showCalendar}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendar(false)}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 }

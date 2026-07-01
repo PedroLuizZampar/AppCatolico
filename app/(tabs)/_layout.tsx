@@ -1,15 +1,16 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { getColors } from '@/lib/theme/tokens';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const { isDark, toggleTheme } = useTheme();
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -34,20 +35,37 @@ export default function TabLayout() {
           fontWeight: '500',
         },
         headerRight: () => (
-          <Pressable
-            onPress={toggleTheme}
-            hitSlop={10}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              paddingHorizontal: 12,
-            })}
-          >
-            <Ionicons
-              name={isDark ? 'moon' : 'sunny'}
-              size={20}
-              color={colors.textSecondary}
-            />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable
+              onPress={toggleTheme}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                paddingHorizontal: 8,
+              })}
+            >
+              <Ionicons
+                name={isDark ? 'moon' : 'sunny'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/profile')}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                paddingHorizontal: 8,
+                marginRight: 10,
+              })}
+            >
+              <Ionicons
+                name="person-circle-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+          </View>
         ),
       }}
     >

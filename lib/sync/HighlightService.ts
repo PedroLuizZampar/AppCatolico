@@ -1,17 +1,18 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextHighlight } from '../types';
-
-const HIGHLIGHTS_KEY = '@app_catolico_highlights';
+import { 
+  getLocalHighlights as getSqliteHighlights, 
+  addLocalHighlight, 
+  removeLocalHighlight, 
+  updateLocalHighlightsForChapter 
+} from '../sqlite/sqliteDatabase';
 
 /**
- * Serviço de gerenciamento de grifos locais.
- * Segue o mesmo padrão singleton do FavoritesSyncService.
+ * Serviço de gerenciamento de grifos do usuário com suporte a SQLite local.
  */
 export class HighlightService {
   private static instance: HighlightService;
-  private cache: TextHighlight[] | null = null;
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): HighlightService {
     if (!HighlightService.instance) {
@@ -21,68 +22,36 @@ export class HighlightService {
   }
 
   /**
-   * Buscar todos os grifos salvos
+   * Buscar todos os grifos locais salvos do usuário
    */
-  async getHighlights(): Promise<TextHighlight[]> {
-    if (this.cache !== null) {
-      return this.cache;
-    }
-    try {
-      const stored = await AsyncStorage.getItem(HIGHLIGHTS_KEY);
-      const parsed: TextHighlight[] = stored ? JSON.parse(stored) : [];
-      this.cache = parsed;
-      return parsed;
-    } catch (error) {
-      console.error('Erro ao buscar grifos:', error);
-      return [];
-    }
+  async getHighlights(userId: string): Promise<TextHighlight[]> {
+    return getSqliteHighlights(userId);
   }
 
   /**
-   * Salvar grifos localmente
+   * Adicionar um grifo local
    */
-  private async saveHighlights(highlights: TextHighlight[]): Promise<void> {
-    this.cache = highlights;
-    try {
-      await AsyncStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(highlights));
-    } catch (error) {
-      console.error('Erro ao salvar grifos:', error);
-      throw error;
-    }
+  async addHighlight(userId: string, highlight: TextHighlight): Promise<void> {
+    return addLocalHighlight(userId, highlight);
   }
 
   /**
-   * Adicionar um grifo
+   * Remover um grifo local pelo ID
    */
-  async addHighlight(highlight: TextHighlight): Promise<void> {
-    const highlights = await this.getHighlights();
-    const updated = [...highlights, highlight];
-    await this.saveHighlights(updated);
+  async removeHighlight(userId: string, id: string): Promise<void> {
+    return removeLocalHighlight(userId, id);
   }
 
   /**
-   * Remover um grifo pelo ID
-   */
-  async removeHighlight(id: string): Promise<void> {
-    const highlights = await this.getHighlights();
-    const filtered = highlights.filter(h => h.id !== id);
-    await this.saveHighlights(filtered);
-  }
-
-  /**
-   * Atualiza a lista de grifos de um capítulo específico (salvamento em lote pós-resolução de conflitos)
+   * Atualiza a lista de grifos de um capítulo específico no SQLite local
    */
   async updateHighlightsForChapter(
+    userId: string,
     bookSlug: string,
     chapterId: number,
     chapterHighlights: TextHighlight[]
   ): Promise<void> {
-    const allHighlights = await this.getHighlights();
-    const otherHighlights = allHighlights.filter(
-      h => !(h.bookSlug === bookSlug && h.chapterId === chapterId)
-    );
-    const updated = [...otherHighlights, ...chapterHighlights];
-    await this.saveHighlights(updated);
+    return updateLocalHighlightsForChapter(userId, bookSlug, chapterId, chapterHighlights);
   }
 }
 

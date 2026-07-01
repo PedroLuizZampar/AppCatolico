@@ -254,7 +254,26 @@ export default function CapituloBibliaScreen() {
 
   // Carregar dados
   const livro = getLivroBiblicoBySlug(livroSlug);
-  const capitulo = getCapituloBiblia(livroSlug, currentChapterId);
+  const initialCapitulo = useMemo(() => {
+    return getCapituloBiblia(livroSlug, currentChapterId) || null;
+  }, [livroSlug, currentChapterId]);
+
+  const [capitulo, setCapitulo] = useState<any>(initialCapitulo);
+
+  useEffect(() => {
+    setCapitulo(initialCapitulo);
+  }, [initialCapitulo]);
+
+  useEffect(() => {
+    import('@/lib/sqlite/sqliteDatabase')
+      .then(({ getCapituloBibliaFromDb }) => getCapituloBibliaFromDb(livroSlug, currentChapterId))
+      .then(res => {
+        if (res) {
+          setCapitulo(res);
+        }
+      })
+      .catch(err => console.error('[SQLite] Erro ao carregar capítulo da Bíblia:', err));
+  }, [livroSlug, currentChapterId]);
 
   // Navegação entre capítulos
   const handlePrevChapter = () => {

@@ -301,7 +301,34 @@ export default function ChapterScreen() {
 
   // Carregar dados
   const book = getBookBySlug(slug);
-  const chapter = book?.data.chapters.find(c => c.chapter === currentChapterId);
+  const initialChapter = useMemo(() => {
+    return book?.data.chapters.find(c => c.chapter === currentChapterId) || null;
+  }, [slug, currentChapterId]);
+
+  const [chapter, setChapter] = useState<any>(initialChapter);
+
+  useEffect(() => {
+    setChapter(initialChapter);
+  }, [initialChapter]);
+
+  useEffect(() => {
+    import('@/lib/sqlite/sqliteDatabase')
+      .then(({ getChapterFromDb }) => getChapterFromDb(slug, currentChapterId))
+      .then(res => {
+        if (res) {
+          setChapter({
+            chapter: res.chapter_num,
+            name: res.chapter_name,
+            paragraphs: res.paragraphs.map(p => ({
+              number: p.paragraph_num,
+              label: p.label || undefined,
+              text: p.text
+            }))
+          });
+        }
+      })
+      .catch(err => console.error('[SQLite] Erro ao carregar capítulo do livro:', err));
+  }, [slug, currentChapterId]);
   const isCatecismo = slug === 'catecismo';
   const isViaSacra = slug === 'via-sacra';
   const isFrasesDeSantos = slug === 'frases-de-santos';
@@ -1344,7 +1371,7 @@ export default function ChapterScreen() {
                               ) : null}
                               {mystery.leitura_biblica?.texto ? (
                                 <Text style={[styles.mysteryReadingText, { color: colors.text }]}>
-                                  “{mystery.leitura_biblica.texto}”
+                                  {mystery.leitura_biblica.texto}
                                 </Text>
                               ) : null}
                             </View>

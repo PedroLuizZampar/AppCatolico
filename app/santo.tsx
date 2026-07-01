@@ -2,6 +2,9 @@ import { fetchSantoDoDia, SantoContentBlock, SantoDoDiaResponse } from '@/lib/sa
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens';
 import { capitalizeWordsExceptDe, formatDatePT, monthIndexFromLabel, monthLabelPt } from '@/lib/utils';
+import { CalendarModal } from '@/components/CalendarModal';
+import { ErrorState } from '@/components/ErrorState';
+import { useSelectedDate } from '@/lib/context/DateContext';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -25,11 +28,14 @@ export default function SantoScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
+  const { selectedDate, setSelectedDate } = useSelectedDate();
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (dateObj?: Date) => {
+    setLoading(true);
     try {
       setError(null);
-      const result = await fetchSantoDoDia();
+      const result = await fetchSantoDoDia(dateObj);
       setData(result);
     } catch (e: any) {
       setError(e?.message ?? 'Não foi possível carregar o Santo do Dia.');
@@ -39,8 +45,8 @@ export default function SantoScreen() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(selectedDate);
+  }, [selectedDate, load]);
 
   const today = data?.today;
 
@@ -164,24 +170,14 @@ export default function SantoScreen() {
 
   if (error) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle" size={64} color={colors.textSecondary} />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>
-          Erro ao carregar Santo do Dia
-        </Text>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error || 'Dados não encontrados.'}
-        </Text>
-        <Pressable
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            setLoading(true);
-            load();
-          }}
-        >
-          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Erro ao carregar Santo do Dia"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          load(selectedDate);
+        }}
+      />
     );
   }
 
@@ -198,14 +194,14 @@ export default function SantoScreen() {
           <Text style={[styles.mainTitle, { color: colors.text }]}>
             {today?.title || 'Santo do Dia'}
           </Text>
-          <View style={styles.dateButton}>
-            <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+          <Pressable style={styles.dateButton} onPress={() => setShowCalendar(true)}>
+            <Ionicons name="calendar" size={16} color={colors.primary} />
+            <Text style={[styles.dateText, { color: colors.primary, fontWeight: '500' }]}>
               {capitalizeWordsExceptDe(
                 formatSantoDatePT(today?.day ?? null, today?.month ?? null, today?.year ?? null) || dateLabel
               )}
             </Text>
-          </View>
+          </Pressable>
         </Animated.View>
 
         {today?.image ? (
@@ -246,6 +242,13 @@ export default function SantoScreen() {
           </Animated.View>
         ) : null}
       </ScrollView>
+
+      <CalendarModal
+        visible={showCalendar}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendar(false)}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 }

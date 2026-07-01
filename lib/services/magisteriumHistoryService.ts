@@ -1,8 +1,15 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MagisteriumChat } from '../types/magisterium';
+import { 
+  getLocalChats, 
+  saveLocalChat, 
+  renameLocalChat, 
+  deleteLocalChat, 
+  clearAllLocalChats 
+} from '../sqlite/sqliteDatabase';
 
-const CHATS_STORAGE_KEY = '@sanctus:magisterium_chats_v2';
-
+/**
+ * Serviço de histórico de chats do Magisterium AI usando SQLite local indexado por usuário.
+ */
 export class MagisteriumHistoryService {
   private static instance: MagisteriumHistoryService;
 
@@ -16,86 +23,38 @@ export class MagisteriumHistoryService {
   }
 
   /**
-   * Obtém todos os chats salvos localmente, ordenados por data de atualização (mais recentes primeiro)
+   * Obtém todos os chats salvos localmente do usuário
    */
-  async getChats(): Promise<MagisteriumChat[]> {
-    try {
-      const stored = await AsyncStorage.getItem(CHATS_STORAGE_KEY);
-      if (!stored) return [];
-      const chats = JSON.parse(stored) as MagisteriumChat[];
-      return chats.sort((a, b) => b.updatedAt - a.updatedAt);
-    } catch (error) {
-      console.error('Erro ao obter histórico de chats:', error);
-      return [];
-    }
+  async getChats(userId: string): Promise<MagisteriumChat[]> {
+    return getLocalChats(userId);
   }
 
   /**
-   * Salva ou atualiza um chat específico
+   * Salva ou atualiza um chat específico do usuário
    */
-  async saveChat(chat: MagisteriumChat): Promise<void> {
-    try {
-      const chats = await this.getChats();
-      const index = chats.findIndex(c => c.id === chat.id);
-      
-      chat.updatedAt = Date.now();
-
-      if (index !== -1) {
-        chats[index] = chat;
-      } else {
-        chats.push(chat);
-      }
-
-      await AsyncStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
-    } catch (error) {
-      console.error('Erro ao salvar chat:', error);
-      throw error;
-    }
+  async saveChat(userId: string, chat: MagisteriumChat): Promise<void> {
+    return saveLocalChat(userId, chat);
   }
 
   /**
-   * Renomeia um chat específico
+   * Renomeia um chat específico do usuário
    */
-  async renameChat(id: string, newTitle: string): Promise<void> {
-    try {
-      const chats = await this.getChats();
-      const index = chats.findIndex(c => c.id === id);
-
-      if (index !== -1) {
-        chats[index].title = newTitle;
-        chats[index].updatedAt = Date.now();
-        await AsyncStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
-      }
-    } catch (error) {
-      console.error('Erro ao renomear chat:', error);
-      throw error;
-    }
+  async renameChat(userId: string, id: string, newTitle: string): Promise<void> {
+    return renameLocalChat(userId, id, newTitle);
   }
 
   /**
-   * Exclui um chat específico
+   * Exclui um chat específico do usuário
    */
-  async deleteChat(id: string): Promise<void> {
-    try {
-      const chats = await this.getChats();
-      const filtered = chats.filter(c => c.id !== id);
-      await AsyncStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(filtered));
-    } catch (error) {
-      console.error('Erro ao deletar chat:', error);
-      throw error;
-    }
+  async deleteChat(userId: string, id: string): Promise<void> {
+    return deleteLocalChat(userId, id);
   }
 
   /**
-   * Limpa todo o histórico de chats
+   * Limpa todo o histórico de chats do usuário
    */
-  async clearAllChats(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(CHATS_STORAGE_KEY);
-    } catch (error) {
-      console.error('Erro ao limpar todo histórico de chats:', error);
-      throw error;
-    }
+  async clearAllChats(userId: string): Promise<void> {
+    return clearAllLocalChats(userId);
   }
 }
 

@@ -1,3 +1,9 @@
+import { getSantoCache, saveSantoCache } from './sqlite/sqliteDatabase';
+
+export type SantoContentBlock =
+  | { type: 'h2' | 'h3' | 'h4' | 'p' | 'blockquote'; text: string }
+  | { type: 'ul' | 'ol'; items: string[] };
+
 export type SantoDoDiaToday = {
   day: string | null;
   month: string | null;
@@ -10,489 +16,72 @@ export type SantoDoDiaToday = {
   outros_santos: string[] | null;
 };
 
-export type SantoContentBlock =
-  | { type: 'h2' | 'h3' | 'h4' | 'p' | 'blockquote'; text: string }
-  | { type: 'ul' | 'ol'; items: string[] };
-
 export type SantoDoDiaResponse = {
   objective: string;
   source: 'Canção Nova';
   today: SantoDoDiaToday;
+  date?: string;
+  isLatestFallback?: boolean;
 };
 
-const DEFAULT_URL = 'https://santo.cancaonova.com/';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-sanctus.onrender.com';
 
-const decodeHtmlEntities = (input: string): string => {
-  return input
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));
-};
+// Função para formatar Date para YYYY-MM-DD no fuso local
+export function formatDateISO(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-const stripHtmlComments = (input: string): string => {
-  return input.replace(/<!--[\s\S]*?-->/g, '');
-};
+export async function fetchSantoDoDia(dateObj?: Date): Promise<SantoDoDiaResponse> {
+  const targetDate = dateObj || new Date();
+  const dateStr = formatDateISO(targetDate);
+  
+  console.log(`[Santo do Dia] Buscando para data: ${dateStr}`);
 
-const stripTags = (html: string): string => {
-  return decodeHtmlEntities(
-    html
-      .replace(/<\s*br\s*\/?\s*>/gi, '\n')
-      .replace(/<\s*\/\s*p\s*>/gi, '\n\n')
-      .replace(/<[^>]+>/g, '')
-  )
-    .replace(/\r/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-};
+  try {
+    const url = `${API_BASE_URL}/api/v1/santo-do-dia?date=${dateStr}`;
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
 
-const normalizeSpaces = (text: string): string => {
-  return text
-    .replace(/\u00A0/g, ' ')
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-};
-
-const normalizeSearchKey = (text: string): string => {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-};
-
-const extractFirst = (re: RegExp, input: string): string | null => {
-  const match = re.exec(input);
-  return match?.[1] ? stripTags(match[1]) : null;
-};
-
-const extractElementInnerHtml = (input: string, openTagRe: RegExp): string | null => {
-  const match = openTagRe.exec(input);
-  if (!match || match.index == null) return null;
-
-  const tag = (match[1] || '').toLowerCase();
-  if (!tag) return null;
-
-  const openTagEnd = match.index + match[0].length;
-  const tagRe = new RegExp(`<\\/?${tag}\\b`, 'ig');
-  tagRe.lastIndex = openTagEnd;
-
-  let depth = 1;
-  let m: RegExpExecArray | null;
-
-  while ((m = tagRe.exec(input)) !== null) {
-    const isClosing = input[m.index + 1] === '/';
-    depth += isClosing ? -1 : 1;
-
-    if (depth === 0) {
-      return input.slice(openTagEnd, m.index);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('404');
+      }
+      throw new Error(`Erro na API: ${response.status}`);
     }
-  }
 
-  return null;
-};
-
-const extractAll = (re: RegExp, input: string): string[] => {
-  const results: string[] = [];
-  let match: RegExpExecArray | null;
-
-  const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
-  while ((match = globalRe.exec(input)) !== null) {
-    if (match[1]) results.push(stripTags(match[1]));
-  }
-  return results;
-};
-
-const extractBalancedOuterHtmlFrom = (
-  input: string,
-  tagName: string,
-  startIndex: number = 0
-): string | null => {
-  const openRe = new RegExp(`<${tagName}\\b[^>]*>`, 'i');
-  const slice = input.slice(startIndex);
-  const m = openRe.exec(slice);
-  if (!m || m.index == null) return null;
-
-  const absoluteOpenStart = startIndex + m.index;
-  const openTagEnd = absoluteOpenStart + m[0].length;
-
-  const tagRe = new RegExp(`<\\/?${tagName}\\b`, 'ig');
-  tagRe.lastIndex = openTagEnd;
-
-  let depth = 1;
-  let mm: RegExpExecArray | null;
-  while ((mm = tagRe.exec(input)) !== null) {
-    const isClosing = input[mm.index + 1] === '/';
-    depth += isClosing ? -1 : 1;
-    if (depth === 0) {
-      const closeStart = mm.index;
-      const closeEnd = input.indexOf('>', closeStart);
-      if (closeEnd === -1) return null;
-      return input.slice(absoluteOpenStart, closeEnd + 1);
+    const data: SantoDoDiaResponse = await response.json();
+    
+    // Salvar cache no SQLite local de forma silenciosa e assíncrona
+    if (data && data.today) {
+      saveSantoCache(dateStr, JSON.stringify(data)).catch(err =>
+        console.error('[SQLite] Falha ao salvar cache do santo:', err)
+      );
+      return data;
+    } else {
+      throw new Error('Formato de resposta inválido do servidor.');
     }
-  }
-
-  return null;
-};
-
-const normalizeMonthAbbrev = (value: string | null): string | null => {
-  if (!value) return null;
-  const v = value.trim();
-  if (!v) return null;
-  return v
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .slice(0, 3);
-};
-
-const chooseBestImage = (entryHtml: string): string | null => {
-  const candidates = [] as string[];
-  const imgRe = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = imgRe.exec(entryHtml)) !== null) {
-    if (m[1]) candidates.push(m[1]);
-  }
-
-  const isBad = (src: string) => {
-    const s = src.toLowerCase();
-    return (
-      s.includes('icon-x-ext') ||
-      s.includes('device-liturgia') ||
-      s.includes('pedido-thumb')
+  } catch (error: any) {
+    console.warn('[Santo do Dia] Erro na API ou rede, tentando obter cache local SQLite:', error);
+    
+    // Tentar obter do cache local do SQLite
+    const cached = await getSantoCache(dateStr);
+    if (cached) {
+      console.log('[Santo do Dia] Retornando cache local SQLite.');
+      return cached;
+    }
+    
+    if (error.message === '404') {
+      throw new Error('Não existem registros do Santo do Dia para a data selecionada.');
+    }
+    
+    throw new Error(
+      'Não foi possível obter o Santo do Dia da data selecionada. Verifique sua conexão com a internet.'
     );
-  };
-
-  const isGood = (src: string) => {
-    const s = src.toLowerCase();
-    return /\.(jpe?g|png|webp)(\?|$)/.test(s) || s.includes('uploads') || s.includes('cnimages');
-  };
-
-  const good = candidates.filter(src => !isBad(src) && isGood(src));
-  if (good.length > 0) return good[0];
-
-  const ok = candidates.filter(src => !isBad(src));
-  return ok[0] ?? null;
-};
-
-const extractTextBlocks = (entryHtml: string): string | null => {
-  const blocks = [] as string[];
-  const blockRe = /<(p|h2|h3|h4)[^>]*>([\s\S]*?)<\/(\1)>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = blockRe.exec(entryHtml)) !== null) {
-    const text = stripTags(m[2] || '').replace(/\s{2,}/g, ' ').trim();
-    if (!text) continue;
-
-    const upper = text.toUpperCase();
-    if (
-      upper.includes('COMPARTILHE NO') ||
-      upper.includes('AJUDE A CANCAO NOVA') ||
-      upper.includes('PEDIDO DE ORACAO') ||
-      upper.includes('APLICATIVO LITURGIA')
-    ) {
-      continue;
-    }
-
-    blocks.push(text);
   }
-
-  if (blocks.length === 0) return null;
-  return blocks.join('\n\n');
-};
-
-const shouldSkipText = (text: string): boolean => {
-  const cleaned = normalizeSpaces(text);
-  if (!cleaned) return true;
-
-  // Ruídos comuns (WordPress/markup)
-  if (cleaned === '.' || cleaned === '…' || cleaned === '-->' || cleaned === '->') return true;
-
-  const upper = cleaned.toUpperCase();
-  return (
-    upper.includes('COMPARTILHE NO') ||
-    upper.includes('AJUDE A CANCAO NOVA') ||
-    upper.includes('PEDIDO DE ORACAO') ||
-    upper.includes('APLICATIVO LITURGIA')
-  );
-};
-
-const isBoldOnlyParagraph = (innerHtml: string): boolean => {
-  const s = innerHtml.trim();
-  if (!s) return false;
-
-  // <p><strong>Texto</strong></p> (com spans opcionais)
-  return /^(?:<span\b[^>]*>\s*)*<(strong|b)\b[^>]*>[\s\S]*?<\/\1>\s*(?:<\/span>\s*)*$/i.test(
-    s
-  );
-};
-
-const pushIfText = (
-  blocks: SantoContentBlock[],
-  type: 'h2' | 'h3' | 'h4' | 'p' | 'blockquote',
-  text: string
-) => {
-  const cleaned = normalizeSpaces(text);
-  if (!cleaned) return;
-  if (shouldSkipText(cleaned)) return;
-  blocks.push({ type, text: cleaned });
-};
-
-const findOtherSaintsSectionIndex = (entryHtml: string): number => {
-  const re = /<(h2|h3|h4|p|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(entryHtml)) !== null) {
-    if (isOutrosSantosText(stripTags(m[2] || ''))) {
-      return m.index;
-    }
-  }
-  return -1;
-};
-
-const findFooterSectionIndex = (entryHtml: string): number => {
-  const re = /<(h2|h3|h4|p|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(entryHtml)) !== null) {
-    if (isFooterText(stripTags(m[2] || ''))) {
-      return m.index;
-    }
-  }
-  return -1;
-};
-
-const isOutrosSantosText = (text: string): boolean => {
-  const n = normalizeSearchKey(text);
-  return n.includes('outros') && (n.includes('santos') || n.includes('beatos'));
-};
-
-const isFooterText = (text: string): boolean => {
-  const n = normalizeSearchKey(text).trim();
-  return n === 'fontes:' || n === 'fontes';
-};
-
-const extractContentBlocks = (entryHtml: string): SantoContentBlock[] | null => {
-  const blocks: SantoContentBlock[] = [];
-
-  const otherIdx = findOtherSaintsSectionIndex(entryHtml);
-  const footerIdx = findFooterSectionIndex(entryHtml);
-  const endIdx =
-    otherIdx >= 0 && footerIdx >= 0
-      ? Math.min(otherIdx, footerIdx)
-      : otherIdx >= 0
-        ? otherIdx
-        : footerIdx;
-  const html = endIdx >= 0 ? entryHtml.slice(0, endIdx) : entryHtml;
-
-  const elementRe = /<(p|h2|h3|h4|blockquote|ul|ol|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = elementRe.exec(html)) !== null) {
-    const tag = (m[1] || '').toLowerCase();
-    const inner = m[2] || '';
-
-    const plainText = stripTags(inner).trim();
-    if (isOutrosSantosText(plainText) || isFooterText(plainText)) break;
-
-    if (tag === 'ul' || tag === 'ol') {
-      const items = extractAll(/<li[^>]*>([\s\S]*?)<\/li>/gi, inner)
-        .map(t => normalizeSpaces(t))
-        .filter(t => t.length > 0 && !shouldSkipText(t));
-
-      if (items.length > 0) blocks.push({ type: tag as 'ul' | 'ol', items });
-      continue;
-    }
-
-    // Sempre que for <strong>/<b> (top-level), trata como H3
-    if (tag === 'strong' || tag === 'b') {
-      pushIfText(blocks, 'h3', stripTags(inner));
-      continue;
-    }
-
-    // Dentro de <p>, qualquer <b>/<strong> vira um bloco H3 (mantendo a ordem)
-    if (tag === 'p') {
-      const pInner = inner;
-
-      // Caso simples: parágrafo todo em negrito
-      if (isBoldOnlyParagraph(pInner)) {
-        pushIfText(blocks, 'h3', stripTags(pInner));
-        continue;
-      }
-
-      const boldRe = /<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-      let lastIndex = 0;
-      let hasBold = false;
-      let bm: RegExpExecArray | null;
-
-      while ((bm = boldRe.exec(pInner)) !== null) {
-        hasBold = true;
-        const beforeHtml = pInner.slice(lastIndex, bm.index);
-        pushIfText(blocks, 'p', stripTags(beforeHtml));
-
-        const boldHtml = bm[2] || '';
-        pushIfText(blocks, 'h3', stripTags(boldHtml));
-
-        lastIndex = bm.index + bm[0].length;
-      }
-
-      if (hasBold) {
-        const afterHtml = pInner.slice(lastIndex);
-        pushIfText(blocks, 'p', stripTags(afterHtml));
-        continue;
-      }
-
-      pushIfText(blocks, 'p', stripTags(pInner));
-      continue;
-    }
-
-    // Demais tags
-    pushIfText(blocks, tag as 'h2' | 'h3' | 'h4' | 'blockquote', stripTags(inner));
-  }
-
-  return blocks.length > 0 ? blocks : null;
-};
-
-const extractOtherSaints = (entryHtml: string): string[] | null => {
-  const otherIdx = findOtherSaintsSectionIndex(entryHtml);
-  const footerIdx = findFooterSectionIndex(entryHtml);
-
-  const candidates: string[] = [];
-
-  if (otherIdx >= 0) {
-    // Limita o slice entre "Outros Santos" e "Fontes:" para não capturar lista de fontes
-    const otherSlice =
-      footerIdx >= 0 && footerIdx > otherIdx
-        ? entryHtml.slice(otherIdx, footerIdx)
-        : entryHtml.slice(otherIdx);
-    const ulOuter =
-      extractBalancedOuterHtmlFrom(otherSlice, 'ol', 0) ??
-      extractBalancedOuterHtmlFrom(otherSlice, 'ul', 0);
-
-    if (ulOuter) {
-      const items = extractAll(/<li[^>]*>([\s\S]*?)<\/li>/gi, ulOuter)
-        .map(t => normalizeSpaces(t))
-        .filter(t => t.length > 0);
-
-      if (items.length > 0) return items;
-    }
-  }
-
-  // Fallback: tenta encontrar a lista mais "cara" com cara de outros santos
-  const listRe = /<(ul|ol)\b[^>]*>[\s\S]*?<\/\1>/gi;
-  let best: { score: number; items: string[] } | null = null;
-  let mm: RegExpExecArray | null;
-  while ((mm = listRe.exec(entryHtml)) !== null) {
-    const outer = mm[0] || '';
-    const items = extractAll(/<li[^>]*>([\s\S]*?)<\/li>/gi, outer)
-      .map(t => normalizeSpaces(t))
-      .filter(t => t.length > 0);
-    if (items.length < 3) continue;
-
-    const startsWithEm = items.filter(i => /^em\s+/i.test(i)).length;
-    const hasDagger = items.filter(i => i.includes('†')).length;
-    const score = items.length + startsWithEm * 2 + hasDagger;
-
-    if (!best || score > best.score) best = { score, items };
-  }
-
-  if (best?.items?.length) {
-    candidates.push(...best.items);
-  }
-
-  return candidates.length > 0 ? candidates : null;
-};
-
-const extractImageCaption = (entryHtml: string, imageUrl: string | null): string | null => {
-  if (!imageUrl) return null;
-
-  const imgIdx = entryHtml.indexOf(imageUrl);
-  if (imgIdx < 0) return null;
-
-  // Encontra o fim do </p> que contém a imagem
-  const pCloseIdx = entryHtml.indexOf('</p>', imgIdx);
-  if (pCloseIdx < 0) return null;
-
-  const after = entryHtml.slice(pCloseIdx + 4, pCloseIdx + 1004);
-
-  // Próximo <p> que contenha <span> (possivelmente envolvido em <i> ou <em>)
-  const nextP = /^\s*<p[^>]*>([\s\S]*?)<\/p>/i.exec(after);
-  if (!nextP) return null;
-
-  const inner = nextP[1] || '';
-  if (!/<span\b/i.test(inner)) return null;
-
-  // Não deve começar com <strong> (seria título de conteúdo)
-  if (/^\s*<strong\b/i.test(inner)) return null;
-
-  const text = stripTags(inner).trim();
-  if (!text || text.length > 200) return null;
-
-  return text;
-};
-
-export async function fetchSantoDoDia(url: string = DEFAULT_URL): Promise<SantoDoDiaResponse> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.6',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Não foi possível acessar ${url}, status ${response.status}`);
-  }
-
-  const html = stripHtmlComments(await response.text());
-
-  // Data (dia/mês/ano)
-  const dateInner =
-    extractElementInnerHtml(html, /<([a-z0-9]+)[^>]*id=["']date-post["'][^>]*>/i) ?? html;
-  const day = extractFirst(/class=["']dia["'][^>]*>([\s\S]*?)<\//i, dateInner);
-  const monthRaw = extractFirst(/class=["']mes["'][^>]*>([\s\S]*?)<\//i, dateInner);
-  const year = extractFirst(/class=["']ano["'][^>]*>([\s\S]*?)<\//i, dateInner);
-  const month = normalizeMonthAbbrev(monthRaw) ?? monthRaw;
-
-  // Título
-  const title = extractFirst(/<h1[^>]*class=["'][^"']*entry-title[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i, html);
-
-  // Conteúdo principal
-  const entryInner =
-    extractElementInnerHtml(html, /<([a-z0-9]+)[^>]*class=["'][^"']*entry-content[^"']*["'][^>]*>/i) ?? '';
-
-  const image = entryInner ? chooseBestImage(entryInner) : null;
-  const image_caption = entryInner ? extractImageCaption(entryInner, image) : null;
-  let content_blocks = entryInner ? extractContentBlocks(entryInner) : null;
-  const full_text = entryInner ? extractTextBlocks(entryInner) : null;
-
-  // Remove texto da legenda da imagem dos blocos de conteúdo para evitar duplicação
-  if (image_caption && content_blocks) {
-    const captionNorm = normalizeSearchKey(image_caption);
-    content_blocks = content_blocks.filter(
-      b => !('text' in b && normalizeSearchKey(b.text) === captionNorm)
-    );
-    if (content_blocks.length === 0) content_blocks = null;
-  }
-
-  // Lista de outros santos (não depende do primeiro <ul> do conteúdo)
-  const outros_santos = entryInner ? extractOtherSaints(entryInner) : null;
-
-  return {
-    objective:
-      'A API_LITURGIA_DIARIA visa disponibilizar via api as leituras para facilitar a criação de aplicações que almejam a evangelização.',
-    source: 'Canção Nova',
-    today: {
-      day,
-      month,
-      year,
-      title,
-      image,
-      image_caption,
-      content_blocks,
-      full_text,
-      outros_santos,
-    },
-  };
 }

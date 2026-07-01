@@ -29,37 +29,21 @@ export default function BibliaScreen() {
       )
     : livros;
 
-  // Busca por conteúdo dos versículos (ambos os testamentos)
-  const matchingVerses = useMemo(() => {
-    if (!trimmedQuery || trimmedQuery.length < 2) return [];
+  const [matchingVerses, setMatchingVerses] = useState<any[]>([]);
 
-    const q = normalizeText(trimmedQuery);
-    const results: {
-      livroNome: string;
-      livroSlug: string;
-      capitulo: number;
-      versiculo: number;
-      texto: string;
-    }[] = [];
-
-    for (const livro of todosLivros) {
-      for (const cap of livro.capitulos) {
-        for (const v of cap.versiculos) {
-          if (normalizeText(v.texto).includes(q)) {
-            results.push({
-              livroNome: livro.nome,
-              livroSlug: livro.slug,
-              capitulo: cap.capitulo,
-              versiculo: v.versiculo,
-              texto: v.texto,
-            });
-            if (results.length >= 30) return results;
-          }
-        }
-      }
+  React.useEffect(() => {
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      setMatchingVerses([]);
+      return;
     }
+    const delayDebounceFn = setTimeout(() => {
+      import('@/lib/sqlite/sqliteDatabase')
+        .then(({ buscarVersiculosFromDb }) => buscarVersiculosFromDb(trimmedQuery))
+        .then(res => setMatchingVerses(res))
+        .catch(err => console.error('[SQLite] Erro ao buscar versículos:', err));
+    }, 250);
 
-    return results;
+    return () => clearTimeout(delayDebounceFn);
   }, [trimmedQuery]);
 
   const handleLivroPress = (livro: LivroBiblico) => {

@@ -1,8 +1,10 @@
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { borderRadius, getColors, shadows, spacing, typography } from '@/lib/theme/tokens';
+import { CalendarModal } from '@/components/CalendarModal';
+import { useSelectedDate } from '@/lib/context/DateContext';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +15,8 @@ export default function HomeScreen() {
   const { isDark } = useTheme();
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
+  const { selectedDate, setSelectedDate } = useSelectedDate();
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
 
   const formattedDate = useMemo(() => {
     const options: Intl.DateTimeFormatOptions = {
@@ -21,9 +25,9 @@ export default function HomeScreen() {
       month: 'long',
       year: 'numeric'
     };
-    const dateStr = new Date().toLocaleDateString('pt-BR', options);
+    const dateStr = selectedDate.toLocaleDateString('pt-BR', options);
     return dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-  }, []);
+  }, [selectedDate]);
 
   const menuItems = [
     {
@@ -87,7 +91,7 @@ export default function HomeScreen() {
       subtitle: 'Terço do dia',
       icon: 'hands-pray',
       color: '#c6a656',
-      route: `/livro/misterios-terco/capitulo/${getTodayMisteriosStartId()}?fluxo=intro&tipo=terco`,
+      route: `/livro/misterios-terco/capitulo/${getTodayMisteriosStartId(selectedDate)}?fluxo=intro&tipo=terco`,
       library: 'MaterialCommunityIcons',
     },
     {
@@ -131,10 +135,10 @@ export default function HomeScreen() {
           entering={FadeInDown.duration(400).delay(100)}
           style={styles.header}
         >
-          <View style={styles.dateContainer}>
+          <Pressable style={styles.dateContainer} onPress={() => setShowCalendar(true)}>
             <Ionicons name="calendar" size={16} color={colors.textSecondary} />
             <Text style={[styles.dateText, { color: colors.textSecondary }]}>{formattedDate}</Text>
-          </View>
+          </Pressable>
           <Pressable
             style={[styles.iconButton, {
               backgroundColor: colors.surface,
@@ -213,6 +217,13 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <CalendarModal
+        visible={showCalendar}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendar(false)}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 }

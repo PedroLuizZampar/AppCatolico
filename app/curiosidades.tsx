@@ -3,6 +3,12 @@ import { borderRadius, getColors, spacing, typography } from '@/lib/theme/tokens
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
+import { CalendarModal } from '@/components/CalendarModal';
+import { ErrorState } from '@/components/ErrorState';
+import { formatDateISO } from '@/lib/santoDoDia';
+import { capitalizeWordsExceptDe, formatDatePT } from '@/lib/utils';
+import { useSelectedDate } from '@/lib/context/DateContext';
+import { getCuriosidadesCache, saveCuriosidadesCache } from '@/lib/sqlite/sqliteDatabase';
 import {
   ActivityIndicator,
   Pressable,
@@ -282,8 +288,11 @@ export default function CuriosidadesScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { selectedDate, setSelectedDate } = useSelectedDate();
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
 
-  const fetchCuriositiesFromApi = async (isBackground = false) => {
+  const fetchCuriositiesFromApi = async (dateObj: Date, isBackground = false) => {
+    const dateStr = formatDateISO(dateObj);
     if (!isBackground) {
       setLoading(true);
     } else {
@@ -292,24 +301,34 @@ export default function CuriosidadesScreen() {
     setError(null);
 
     try {
-      const url = getApiUrl('/api/v1/curiosidades');
+      const url = getApiUrl(`/api/v1/curiosidades?date=${dateStr}`);
       const response = await fetch(url);
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('404');
+        }
         throw new Error(`Erro na API: ${response.status}`);
       }
       const data = await response.json();
       if (data && data.markdown) {
-        if (data.markdown !== curiosities) {
-          setCuriosities(data.markdown);
-          await AsyncStorage.setItem('@curiosidades_catolicas_cache', data.markdown);
-        }
+        setCuriosities(data.markdown);
+        await saveCuriosidadesCache(dateStr, data.markdown);
       } else {
         throw new Error('Resposta do servidor em formato inválido.');
       }
     } catch (err: any) {
-      console.error('[Curiosidades] Erro ao buscar dados da API:', err);
-      if (!curiosities) {
-        setError('Não foi possível carregar as curiosidades. Verifique sua conexão e tente novamente.');
+      console.warn('[Curiosidades] Erro ao buscar dados da API:', err);
+      // Tentar carregar do cache local antes de disparar erro
+      const cached = await getCuriosidadesCache(dateStr);
+      if (cached) {
+        setCuriosities(cached);
+      } else if (!isBackground) {
+        setCuriosities(null);
+        if (err.message === '404') {
+          setError('Não existem registros de curiosidades católicas para a data selecionada.');
+        } else {
+          setError('Não foi possível obter as curiosidades para a data selecionada. Verifique sua conexão com a internet.');
+        }
       }
     } finally {
       setLoading(false);
@@ -317,26 +336,25 @@ export default function CuriosidadesScreen() {
     }
   };
 
-  // Carrega curiosidades do AsyncStorage e inicia a busca na API
   useEffect(() => {
-    AsyncStorage.getItem('@curiosidades_catolicas_cache')
+    const dateStr = formatDateISO(selectedDate);
+    getCuriosidadesCache(dateStr)
       .then((cached) => {
         if (cached) {
           setCuriosities(cached);
           setLoading(false);
-          // Inicia atualização silenciosa em background se já houver cache
-          fetchCuriositiesFromApi(true);
+          fetchCuriositiesFromApi(selectedDate, true);
         } else {
-          fetchCuriositiesFromApi(false);
+          fetchCuriositiesFromApi(selectedDate, false);
         }
       })
       .catch(() => {
-        fetchCuriositiesFromApi(false);
+        fetchCuriositiesFromApi(selectedDate, false);
       });
-  }, []);
+  }, [selectedDate]);
 
   const handleRetry = () => {
-    fetchCuriositiesFromApi(false);
+    fetchCuriositiesFromApi(selectedDate, false);
   };
 
   const showLoader = loading && !curiosities;
@@ -369,9 +387,15 @@ export default function CuriosidadesScreen() {
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Curiosidade Diária</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Fatos e Doutrina</Text>
-          <Text style={[styles.description, { color: colors.textMuted }]}>
-            Aprenda mais sobre a história, dogmas e curiosidades da fé católica.
-          </Text>
+          <Pressable 
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md }}
+            onPress={() => setShowCalendar(true)}
+          >
+            <Ionicons name="calendar" size={16} color={colors.primary} />
+            <Text style={[typography.body, { color: colors.primary, fontWeight: '500' }]}>
+              {capitalizeWordsExceptDe(formatDatePT(selectedDate))}
+            </Text>
+          </Pressable>
         </Animated.View>
 
         {showLoader && (
@@ -384,17 +408,11 @@ export default function CuriosidadesScreen() {
         )}
 
         {error && !curiosities && !loading && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={48} color={colors.error} style={{ marginBottom: spacing.sm }} />
-            <Text style={[styles.errorTitle, { color: colors.text, textAlign: 'center', marginBottom: spacing.md }]}>Erro ao obter curiosidades</Text>
-            <Text style={[styles.errorText, { color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }]}>{error}</Text>
-            <Pressable
-              onPress={handleRetry}
-              style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            >
-              <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-            </Pressable>
-          </View>
+          <ErrorState
+            title="Erro ao obter curiosidades"
+            message={error}
+            onRetry={handleRetry}
+          />
         )}
 
         {curiosities && (
@@ -406,6 +424,13 @@ export default function CuriosidadesScreen() {
           </Animated.View>
         )}
       </ScrollView>
+
+      <CalendarModal
+        visible={showCalendar}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendar(false)}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 }

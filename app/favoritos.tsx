@@ -6,9 +6,10 @@ import { FavoriteParagraph } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from '@/lib/context/AlertContext';
 
 type FilterType = 'todos' | 'biblia' | 'livro' | 'catecismo' | 'frases';
 type SortType = 'recente' | 'antigo' | 'livro' | 'capitulo';
@@ -47,6 +48,7 @@ export default function FavoritesScreen() {
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
   const { favorites, loading, removeFavorite: removeFromSync, clearAll, cleanDuplicates } = useFavoritesSync();
+  const { showAlert } = useAlert();
 
   const [filterType, setFilterType] = useState<FilterType>('todos');
   const [sortType] = useState<SortType>('recente');
@@ -134,10 +136,10 @@ export default function FavoritesScreen() {
   }, [favorites, filterType, sortType]);
 
   const handleRemove = (favorite: FavoriteParagraph) => {
-    Alert.alert(
-      'Remover Favorito',
-      'Tem certeza que deseja remover este item dos favoritos?',
-      [
+    showAlert({
+      title: 'Remover Favorito',
+      message: 'Tem certeza que deseja remover este item dos favoritos?',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Remover', 
@@ -147,14 +149,14 @@ export default function FavoritesScreen() {
           }
         }
       ]
-    );
+    });
   };
 
   const handleClearAll = () => {
-    Alert.alert(
-      'Limpar Tudo',
-      'Tem certeza que deseja remover todos os favoritos?',
-      [
+    showAlert({
+      title: 'Limpar Tudo',
+      message: 'Tem certeza que deseja remover todos os favoritos?',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Limpar', 
@@ -164,7 +166,7 @@ export default function FavoritesScreen() {
           }
         }
       ]
-    );
+    });
   };
 
   const handlePress = (favorite: FavoriteWithGroup) => {
