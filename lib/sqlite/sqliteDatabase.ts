@@ -64,7 +64,8 @@ export function initializeDatabase(): Promise<void> {
         nome TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         token TEXT NOT NULL,
-        last_sync_timestamp INTEGER DEFAULT 0
+        last_sync_timestamp INTEGER DEFAULT 0,
+        avatar_url TEXT DEFAULT NULL
       );
       CREATE TABLE IF NOT EXISTS local_favorites (
         id TEXT PRIMARY KEY,
@@ -114,6 +115,48 @@ export function initializeDatabase(): Promise<void> {
         is_synced INTEGER DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS idx_local_chats_user ON local_chats(user_id);
+
+      CREATE TABLE IF NOT EXISTS local_activities (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        dia TEXT,
+        horario TEXT NOT NULL,
+        lembrete_ativo INTEGER DEFAULT 0,
+        lembrete_minutos_antes INTEGER DEFAULT 0,
+        repetir INTEGER DEFAULT 0,
+        frequencia TEXT,
+        dias_semana TEXT,
+        cor TEXT NOT NULL,
+        mensagem_lembrete TEXT,
+        icone TEXT DEFAULT NULL,
+        updated_at INTEGER NOT NULL,
+        is_deleted INTEGER DEFAULT 0,
+        is_synced INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_local_activities_user ON local_activities(user_id);
+
+      CREATE TABLE IF NOT EXISTS local_activity_exclusions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        activity_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        is_deleted INTEGER DEFAULT 0,
+        is_synced INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_local_exclusions_user ON local_activity_exclusions(user_id);
+
+      CREATE TABLE IF NOT EXISTS local_completions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        activity_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        is_deleted INTEGER DEFAULT 0,
+        is_synced INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_local_completions_user ON local_completions(user_id);
     `);
 
     try {
@@ -121,6 +164,21 @@ export function initializeDatabase(): Promise<void> {
     } catch (e) {}
     try {
       await db.execAsync('ALTER TABLE local_chats ADD COLUMN is_synced INTEGER DEFAULT 0');
+    } catch (e) {}
+    try {
+      await db.execAsync('ALTER TABLE local_users ADD COLUMN avatar_url TEXT DEFAULT NULL');
+    } catch (e) {}
+    try {
+      await db.execAsync("ALTER TABLE local_activities ADD COLUMN terminar_tipo TEXT DEFAULT 'nunca';");
+    } catch (e) {}
+    try {
+      await db.execAsync("ALTER TABLE local_activities ADD COLUMN terminar_vezes INTEGER DEFAULT 0;");
+    } catch (e) {}
+    try {
+      await db.execAsync("ALTER TABLE local_activities ADD COLUMN terminar_data TEXT DEFAULT NULL;");
+    } catch (e) {}
+    try {
+      await db.execAsync("ALTER TABLE local_activities ADD COLUMN icone TEXT DEFAULT NULL;");
     } catch (e) {}
 
     const result = await db.getFirstAsync<{ valor: string }>(
@@ -582,17 +640,18 @@ export interface LocalDbUser {
   email: string;
   token: string;
   last_sync_timestamp: number;
+  avatar_url?: string | null;
 }
 
-export async function saveLocalUser(user: { id: string; nome: string; email: string; token: string }): Promise<void> {
+export async function saveLocalUser(user: { id: string; nome: string; email: string; token: string; avatar_url?: string | null }): Promise<void> {
   return runInQueue(async () => {
     try {
       const db = await getDb();
       // Limpar usuários anteriores se existirem (apenas um usuário ativo localmente por vez)
       await db.runAsync('DELETE FROM local_users');
       await db.runAsync(
-        'INSERT INTO local_users (id, nome, email, token, last_sync_timestamp) VALUES (?, ?, ?, ?, 0)',
-        [user.id || '', user.nome || '', user.email || '', user.token || '']
+        'INSERT INTO local_users (id, nome, email, token, last_sync_timestamp, avatar_url) VALUES (?, ?, ?, ?, 0, ?)',
+        [user.id || '', user.nome || '', user.email || '', user.token || '', user.avatar_url || null]
       );
       console.log('[SQLite] Usuário salvo localmente:', user.email);
     } catch (error) {
@@ -607,7 +666,7 @@ export async function getActiveUser(): Promise<LocalDbUser | null> {
     try {
       const db = await getDb();
       const row = await db.getFirstAsync<LocalDbUser>(
-        'SELECT id, nome, email, token, last_sync_timestamp FROM local_users LIMIT 1'
+        'SELECT id, nome, email, token, last_sync_timestamp, avatar_url FROM local_users LIMIT 1'
       );
       return row || null;
     } catch (error) {
@@ -1376,6 +1435,585 @@ export async function applyRemoteChats(userId: string, remoteChats: any[]): Prom
       });
     } catch (error) {
       console.error('[SQLite] Erro ao aplicar chats remotos:', error);
+    }
+  });
+}
+
+
+export async function getPendingLocalActivities(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_activities WHERE user_id = ? AND is_synced = 0',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao obter atividades pendentes:', error);
+      return [];
+    }
+  });
+}
+
+export async function getPendingLocalCompletions(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_completions WHERE user_id = ? AND is_synced = 0',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao obter conclusões pendentes:', error);
+      return [];
+    }
+  });
+}
+
+export async function markActivitiesAsSynced(activityIds: string[]): Promise<void> {
+  if (activityIds.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const id of activityIds) {
+          const row = await db.getFirstAsync<{ is_deleted: number }>(
+            'SELECT is_deleted FROM local_activities WHERE id = ?',
+            [id]
+          );
+          if (row && row.is_deleted === 1) {
+            await db.runAsync('DELETE FROM local_activities WHERE id = ?', [id]);
+          } else {
+            await db.runAsync('UPDATE local_activities SET is_synced = 1 WHERE id = ?', [id]);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao marcar atividades como sincronizadas:', error);
+    }
+  });
+}
+
+export async function markCompletionsAsSynced(completionIds: string[]): Promise<void> {
+  if (completionIds.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const id of completionIds) {
+          const row = await db.getFirstAsync<{ is_deleted: number }>(
+            'SELECT is_deleted FROM local_completions WHERE id = ?',
+            [id]
+          );
+          if (row && row.is_deleted === 1) {
+            await db.runAsync('DELETE FROM local_completions WHERE id = ?', [id]);
+          } else {
+            await db.runAsync('UPDATE local_completions SET is_synced = 1 WHERE id = ?', [id]);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao marcar conclusões como sincronizadas:', error);
+    }
+  });
+}
+
+export async function applyRemoteActivities(userId: string, remoteActivities: any[]): Promise<void> {
+  if (remoteActivities.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const act of remoteActivities) {
+          const local = await db.getFirstAsync<{ updated_at: number }>(
+            'SELECT updated_at FROM local_activities WHERE id = ? AND user_id = ?',
+            [act.id, userId]
+          );
+          if (!local) {
+            if (act.is_deleted) continue;
+            await db.runAsync(
+              `INSERT INTO local_activities (id, user_id, titulo, dia, horario, lembrete_ativo, 
+                                            lembrete_minutos_antes, repetir, frequencia, dias_semana, cor, 
+                                            mensagem_lembrete, terminar_tipo, terminar_vezes, terminar_data, 
+                                            icone, updated_at, is_deleted, is_synced)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+              [
+                act.id,
+                userId,
+                act.titulo,
+                act.dia || null,
+                act.horario,
+                act.lembrete_ativo ? 1 : 0,
+                act.lembrete_minutos_antes || 0,
+                act.repetir ? 1 : 0,
+                act.frequencia || null,
+                act.dias_semana || null,
+                act.cor,
+                act.mensagem_lembrete || null,
+                act.terminar_tipo || 'nunca',
+                act.terminar_vezes || 0,
+                act.terminar_data || null,
+                act.icone || null,
+                act.updated_at
+              ]
+            );
+          } else {
+            if (act.updated_at > local.updated_at) {
+              if (act.is_deleted) {
+                await db.runAsync('DELETE FROM local_activities WHERE id = ? AND user_id = ?', [act.id, userId]);
+              } else {
+                await db.runAsync(
+                  `UPDATE local_activities 
+                   SET titulo = ?, dia = ?, horario = ?, lembrete_ativo = ?, 
+                       lembrete_minutos_antes = ?, repetir = ?, frequencia = ?, dias_semana = ?, 
+                       cor = ?, mensagem_lembrete = ?, terminar_tipo = ?, terminar_vezes = ?, 
+                       terminar_data = ?, icone = ?, updated_at = ?, is_deleted = 0, is_synced = 1
+                   WHERE id = ? AND user_id = ?`,
+                  [
+                    act.titulo,
+                    act.dia || null,
+                    act.horario,
+                    act.lembrete_ativo ? 1 : 0,
+                    act.lembrete_minutos_antes || 0,
+                    act.repetir ? 1 : 0,
+                    act.frequencia || null,
+                    act.dias_semana || null,
+                    act.cor,
+                    act.mensagem_lembrete || null,
+                    act.terminar_tipo || 'nunca',
+                    act.terminar_vezes || 0,
+                    act.terminar_data || null,
+                    act.icone || null,
+                    act.updated_at,
+                    act.id,
+                    userId
+                  ]
+                );
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao aplicar atividades remotas:', error);
+    }
+  });
+}
+
+export async function applyRemoteCompletions(userId: string, remoteCompletions: any[]): Promise<void> {
+  if (remoteCompletions.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const comp of remoteCompletions) {
+          const local = await db.getFirstAsync<{ updated_at: number }>(
+            'SELECT updated_at FROM local_completions WHERE id = ? AND user_id = ?',
+            [comp.id, userId]
+          );
+          if (!local) {
+            if (comp.is_deleted) continue;
+            await db.runAsync(
+              `INSERT INTO local_completions (id, user_id, activity_id, data, updated_at, is_deleted, is_synced)
+               VALUES (?, ?, ?, ?, ?, 0, 1)`,
+              [comp.id, userId, comp.activity_id, comp.data, comp.updated_at]
+            );
+          } else {
+            if (comp.updated_at > local.updated_at) {
+              if (comp.is_deleted) {
+                await db.runAsync('DELETE FROM local_completions WHERE id = ? AND user_id = ?', [comp.id, userId]);
+              } else {
+                await db.runAsync(
+                  `UPDATE local_completions 
+                   SET activity_id = ?, data = ?, updated_at = ?, is_deleted = 0, is_synced = 1
+                   WHERE id = ? AND user_id = ?`,
+                  [comp.activity_id, comp.data, comp.updated_at, comp.id, userId]
+                );
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao aplicar conclusões remotas:', error);
+    }
+  });
+}
+
+export async function seedDefaultActivities(userId: string): Promise<void> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      // Verificar se o usuário já tem alguma atividade cadastrada para evitar duplicar
+      const countRow = await db.getFirstAsync<{ count: number }>(
+        'SELECT COUNT(*) as count FROM local_activities WHERE user_id = ?',
+        [userId]
+      );
+      if (countRow && countRow.count > 0) {
+        console.log('[SQLite] Usuário já possui atividades. Pulando seed padrão.');
+        return;
+      }
+
+      const presets = [
+        {
+          titulo: 'Liturgia Diária',
+          categoria: 'Práticas',
+          horario: '07:00',
+          cor: '#4CAF50',
+          mensagem: 'Hora da Liturgia Diária! Alimente sua alma com as leituras de hoje.'
+        },
+        {
+          titulo: 'Meditação do Evangelho',
+          categoria: 'Meditações',
+          horario: '08:00',
+          cor: '#894e93',
+          mensagem: 'Que tal meditar o Evangelho agora? Abra o Sanctus para fazer sua leitura meditada.'
+        },
+        {
+          titulo: 'Curiosidade Diária',
+          categoria: 'Práticas',
+          horario: '18:00',
+          cor: '#FF9800',
+          mensagem: 'Sua curiosidade católica do dia já está disponível. Venha conferir!'
+        },
+        {
+          titulo: 'Terço do Dia',
+          categoria: 'Orações',
+          horario: '20:00',
+          cor: '#c6a656',
+          mensagem: 'Hora de rezar o Terço. Dedique este momento a Nossa Senhora.'
+        },
+        {
+          titulo: 'Santo Rosário',
+          categoria: 'Orações',
+          horario: '15:00',
+          cor: '#D32F2F',
+          mensagem: 'Momento de oração com o Santo Rosário. Una-se à Igreja na oração.'
+        }
+      ];
+
+      const timestamp = Date.now();
+      await db.withTransactionAsync(async () => {
+        for (let i = 0; i < presets.length; i++) {
+          const p = presets[i];
+          const id = `preset_${userId}_${i}_${timestamp}`;
+          await db.runAsync(
+            `INSERT INTO local_activities (id, user_id, titulo, dia, horario, lembrete_ativo, 
+                                          lembrete_minutos_antes, repetir, frequencia, dias_semana, cor, 
+                                          mensagem_lembrete, updated_at, is_deleted, is_synced)
+             VALUES (?, ?, ?, NULL, ?, 1, 0, 1, 'diario', NULL, ?, ?, ?, 0, 0)`,
+            [
+              id,
+              userId,
+              p.titulo,
+              p.horario,
+              p.cor,
+              p.mensagem,
+              timestamp
+            ]
+          );
+        }
+      });
+
+      console.log('[SQLite] Atividades padrão inseridas com sucesso para o usuário:', userId);
+
+      // Agendar notificações para essas atividades padrão
+      try {
+        const { NotificationService } = await import('../services/NotificationService');
+        await NotificationService.rescheduleAll(userId);
+      } catch (ne) {
+        console.error('[SQLite] Erro ao agendar notificações do seed:', ne);
+      }
+
+    } catch (error) {
+      console.error('[SQLite] Erro no seed de atividades padrão:', error);
+    }
+  });
+}
+
+export async function getLocalActivities(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_activities WHERE user_id = ? AND is_deleted = 0 ORDER BY horario ASC',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao carregar atividades:', error);
+      return [];
+    }
+  });
+}
+
+export async function getLocalCompletions(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_completions WHERE user_id = ? AND is_deleted = 0',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao carregar conclusões:', error);
+      return [];
+    }
+  });
+}
+
+export async function toggleLocalCompletion(userId: string, activityId: string, dateStr: string): Promise<boolean> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      const id = `${activityId}_${dateStr}`;
+      const timestamp = Date.now();
+      
+      const existing = await db.getFirstAsync<{ is_deleted: number }>(
+        'SELECT is_deleted FROM local_completions WHERE id = ? AND user_id = ?',
+        [id, userId]
+      );
+      
+      let isCompletedNow = false;
+      if (!existing) {
+        await db.runAsync(
+          'INSERT INTO local_completions (id, user_id, activity_id, data, updated_at, is_deleted, is_synced) VALUES (?, ?, ?, ?, ?, 0, 0)',
+          [id, userId, activityId, dateStr, timestamp]
+        );
+        isCompletedNow = true;
+      } else {
+        if (existing.is_deleted === 1) {
+          await db.runAsync(
+            'UPDATE local_completions SET is_deleted = 0, is_synced = 0, updated_at = ? WHERE id = ? AND user_id = ?',
+            [timestamp, id, userId]
+          );
+          isCompletedNow = true;
+        } else {
+          await db.runAsync(
+            'UPDATE local_completions SET is_deleted = 1, is_synced = 0, updated_at = ? WHERE id = ? AND user_id = ?',
+            [timestamp, id, userId]
+          );
+          isCompletedNow = false;
+        }
+      }
+      return isCompletedNow;
+    } catch (error) {
+      console.error('[SQLite] Erro ao alternar conclusão de atividade:', error);
+      throw error;
+    }
+  });
+}
+
+export async function deleteLocalActivity(userId: string, activityId: string): Promise<void> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      const timestamp = Date.now();
+      await db.runAsync(
+        'UPDATE local_activities SET is_deleted = 1, is_synced = 0, updated_at = ? WHERE id = ? AND user_id = ?',
+        [timestamp, activityId, userId]
+      );
+      
+      try {
+        const { NotificationService } = await import('../services/NotificationService');
+        await NotificationService.rescheduleAll(userId);
+      } catch (ne) {
+        console.error('[SQLite] Erro ao reagendar notificações pós deleção:', ne);
+      }
+    } catch (error) {
+      console.error('[SQLite] Erro ao deletar atividade:', error);
+      throw error;
+    }
+  });
+}
+
+export async function saveLocalActivity(userId: string, activity: any): Promise<void> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      const timestamp = Date.now();
+      const existing = await db.getFirstAsync(
+        'SELECT id FROM local_activities WHERE id = ? AND user_id = ?',
+        [activity.id, userId]
+      );
+      
+      if (!existing) {
+        await db.runAsync(
+          `INSERT INTO local_activities (id, user_id, titulo, dia, horario, lembrete_ativo, 
+                                        lembrete_minutos_antes, repetir, frequencia, dias_semana, cor, 
+                                        mensagem_lembrete, terminar_tipo, terminar_vezes, terminar_data, 
+                                        icone, updated_at, is_deleted, is_synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`,
+          [
+            activity.id,
+            userId,
+            activity.titulo,
+            activity.dia || null,
+            activity.horario,
+            activity.lembrete_ativo ? 1 : 0,
+            activity.lembrete_minutos_antes || 0,
+            activity.repetir ? 1 : 0,
+            activity.frequencia || null,
+            activity.dias_semana || null,
+            activity.cor,
+            activity.mensagem_lembrete || null,
+            activity.terminar_tipo || 'nunca',
+            activity.terminar_vezes || 0,
+            activity.terminar_data || null,
+            activity.icone || null,
+            timestamp
+          ]
+        );
+      } else {
+        await db.runAsync(
+          `UPDATE local_activities 
+           SET titulo = ?, dia = ?, horario = ?, lembrete_ativo = ?, 
+               lembrete_minutos_antes = ?, repetir = ?, frequencia = ?, dias_semana = ?, 
+               cor = ?, mensagem_lembrete = ?, terminar_tipo = ?, terminar_vezes = ?, 
+               terminar_data = ?, icone = ?, updated_at = ?, is_deleted = 0, is_synced = 0
+           WHERE id = ? AND user_id = ?`,
+          [
+            activity.titulo,
+            activity.dia || null,
+            activity.horario,
+            activity.lembrete_ativo ? 1 : 0,
+            activity.lembrete_minutos_antes || 0,
+            activity.repetir ? 1 : 0,
+            activity.frequencia || null,
+            activity.dias_semana || null,
+            activity.cor,
+            activity.mensagem_lembrete || null,
+            activity.terminar_tipo || 'nunca',
+            activity.terminar_vezes || 0,
+            activity.terminar_data || null,
+            activity.icone || null,
+            timestamp,
+            activity.id,
+            userId
+          ]
+        );
+      }
+      
+      try {
+        const { NotificationService } = await import('../services/NotificationService');
+        await NotificationService.rescheduleAll(userId);
+      } catch (ne) {
+        console.error('[SQLite] Erro ao reagendar notificações pós salvamento:', ne);
+      }
+    } catch (error) {
+      console.error('[SQLite] Erro ao salvar atividade local:', error);
+      throw error;
+    }
+  });
+}
+
+export async function getPendingLocalExclusions(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_activity_exclusions WHERE user_id = ? AND is_synced = 0',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao obter exclusões pendentes:', error);
+      return [];
+    }
+  });
+}
+
+export async function markExclusionsAsSynced(exclusionIds: string[]): Promise<void> {
+  if (exclusionIds.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const id of exclusionIds) {
+          const row = await db.getFirstAsync<{ is_deleted: number }>(
+            'SELECT is_deleted FROM local_activity_exclusions WHERE id = ?',
+            [id]
+          );
+          if (row && row.is_deleted === 1) {
+            await db.runAsync('DELETE FROM local_activity_exclusions WHERE id = ?', [id]);
+          } else {
+            await db.runAsync('UPDATE local_activity_exclusions SET is_synced = 1 WHERE id = ?', [id]);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao marcar exclusões como sincronizadas:', error);
+    }
+  });
+}
+
+export async function applyRemoteExclusions(userId: string, remoteExclusions: any[]): Promise<void> {
+  if (remoteExclusions.length === 0) return;
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      await db.withTransactionAsync(async () => {
+        for (const exc of remoteExclusions) {
+          const local = await db.getFirstAsync<{ updated_at: number }>(
+            'SELECT updated_at FROM local_activity_exclusions WHERE id = ? AND user_id = ?',
+            [exc.id, userId]
+          );
+          if (!local) {
+            if (exc.is_deleted) continue;
+            await db.runAsync(
+              `INSERT INTO local_activity_exclusions (id, user_id, activity_id, data, updated_at, is_deleted, is_synced)
+               VALUES (?, ?, ?, ?, ?, 0, 1)`,
+              [exc.id, userId, exc.activity_id, exc.data, exc.updated_at]
+            );
+          } else {
+            if (exc.updated_at > local.updated_at) {
+              if (exc.is_deleted) {
+                await db.runAsync('DELETE FROM local_activity_exclusions WHERE id = ? AND user_id = ?', [exc.id, userId]);
+              } else {
+                await db.runAsync(
+                  `UPDATE local_activity_exclusions 
+                   SET activity_id = ?, data = ?, updated_at = ?, is_deleted = 0, is_synced = 1
+                   WHERE id = ? AND user_id = ?`,
+                  [exc.activity_id, exc.data, exc.updated_at, exc.id, userId]
+                );
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[SQLite] Erro ao aplicar exclusões remotas:', error);
+    }
+  });
+}
+
+export async function excludeLocalActivity(userId: string, activityId: string, dateStr: string): Promise<void> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      const id = `excl_${activityId}_${dateStr}`;
+      const timestamp = Date.now();
+      await db.runAsync(
+        `INSERT OR REPLACE INTO local_activity_exclusions (id, user_id, activity_id, data, updated_at, is_deleted, is_synced)
+         VALUES (?, ?, ?, ?, ?, 0, 0)`,
+        [id, userId, activityId, dateStr, timestamp]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao criar exclusão local de atividade:', error);
+      throw error;
+    }
+  });
+}
+
+export async function getLocalExclusions(userId: string): Promise<any[]> {
+  return runInQueue(async () => {
+    try {
+      const db = await getDb();
+      return await db.getAllAsync(
+        'SELECT * FROM local_activity_exclusions WHERE user_id = ? AND is_deleted = 0',
+        [userId]
+      );
+    } catch (error) {
+      console.error('[SQLite] Erro ao carregar exclusões:', error);
+      return [];
     }
   });
 }

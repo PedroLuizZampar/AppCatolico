@@ -8,8 +8,10 @@ import {
   ScrollView, 
   KeyboardAvoidingView, 
   Platform, 
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { useAlert } from '@/lib/context/AlertContext';
@@ -18,11 +20,73 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
-  const { user, logout, updateUserEmail, apiUrl } = useAuth();
+  const { user, logout, updateUserEmail, updateUserAvatar, apiUrl, avatarUpdatedAt } = useAuth();
   const { isDark } = useTheme();
   const colors = getColors(isDark);
   const router = useRouter();
   const { showAlert } = useAlert();
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const getAvatarUri = () => {
+    if (!user || !user.avatar_url) return null;
+    const baseUri = user.avatar_url.startsWith('http') ? user.avatar_url : `${apiUrl}${user.avatar_url}`;
+    return `${baseUri}?t=${avatarUpdatedAt}`;
+  };
+
+  const handleSelectAvatar = async () => {
+    if (!user) return;
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert({ title: 'Permissão necessária', message: 'Precisamos de permissão para acessar suas fotos para mudar o avatar.' });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedUri = result.assets[0].uri;
+      setIsUploadingAvatar(true);
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: selectedUri,
+        name: 'avatar.jpg',
+        type: 'image/jpeg',
+      } as any);
+
+      const response = await fetch(`${apiUrl}/api/v1/user/upload-avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao fazer upload da imagem.');
+      }
+
+      await updateUserAvatar(data.avatar_url);
+      showAlert({ title: 'Sucesso', message: 'Foto de perfil atualizada com sucesso!' });
+    } catch (err: any) {
+      console.error('[Profile] Erro ao carregar/enviar avatar:', err);
+      showAlert({ title: 'Erro', message: err.message || 'Ocorreu um erro ao atualizar a foto de perfil.' });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Estados do formulário de email
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -52,7 +116,7 @@ export default function ProfileScreen() {
 
   // Função para mudar o e-mail
   const handleUpdateEmail = async () => {
-    const trimmedEmail = newEmail.trim().lower();
+    const trimmedEmail = newEmail.trim().toLowerCase();
     if (!trimmedEmail) {
       showAlert({ title: 'Erro', message: 'Por favor, digite o novo e-mail.' });
       return;
@@ -174,9 +238,29 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         {/* Card do Usuário */}
         <View style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{getInitials(user.nome)}</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.avatarContainer} 
+            onPress={handleSelectAvatar}
+            disabled={isUploadingAvatar}
+          >
+            {isUploadingAvatar ? (
+              <View style={[styles.avatar, { backgroundColor: colors.surfaceLight, marginBottom: 0, justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : user.avatar_url ? (
+              <Image 
+                source={{ uri: getAvatarUri() || undefined }} 
+                style={styles.avatarImage} 
+              />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary, marginBottom: 0 }]}>
+                <Text style={styles.avatarText}>{getInitials(user.nome)}</Text>
+              </View>
+            )}
+            <View style={[styles.editIconContainer, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+              <Ionicons name="camera" size={12} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <Text style={[styles.userName, { color: colors.text }]}>{user.nome}</Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
         </View>
@@ -447,5 +531,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: spacing.md,
+  },
+  avatarImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  editIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
   },
 });

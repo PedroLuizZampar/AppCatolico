@@ -545,7 +545,7 @@ export default function ChatScreen() {
       <Tabs.Screen
         options={{
           headerTitle: 'Magisterium AI',
-          tabBarLabel: 'Magisterium',
+          tabBarLabel: 'Chat',
           headerLeft: () => (
             <Pressable
               onPress={() => toggleDrawer(true)}

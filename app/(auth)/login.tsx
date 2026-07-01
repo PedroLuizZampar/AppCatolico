@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -56,8 +57,11 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.surfaceLight }]}>
-              <Ionicons name="book" size={50} color={colors.primary} />
+            <View style={[styles.logoContainer, { backgroundColor: 'transparent' }]}>
+              <Image
+                source={require('../../assets/nova-logo-app.jpg')}
+                style={styles.logoImage}
+              />
             </View>
             <Text style={[styles.title, { color: colors.text }]}>Sanctus</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -173,6 +177,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
+  },
+  logoImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
   title: {
     fontSize: 28,

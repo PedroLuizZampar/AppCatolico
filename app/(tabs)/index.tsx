@@ -111,11 +111,19 @@ export default function HomeScreen() {
       library: 'MaterialCommunityIcons',
     },
     {
-      title: 'Magisterium',
+      title: 'Magisterium AI',
       subtitle: 'IA de Doutrina e Magistério',
       icon: 'comment-question',
       color: '#4A7BA7',
       route: '/chat',
+      library: 'MaterialCommunityIcons',
+    },
+    {
+      title: 'Plano de Vida',
+      subtitle: 'Agenda espiritual',
+      icon: 'notebook-check',
+      color: '#2f9a83',
+      route: '/plano',
       library: 'MaterialCommunityIcons',
     },
   ];

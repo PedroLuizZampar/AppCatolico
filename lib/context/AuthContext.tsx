@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getActiveUser, saveLocalUser, clearActiveUser, LocalDbUser } from '../sqlite/sqliteDatabase';
+import { getActiveUser, saveLocalUser, clearActiveUser, LocalDbUser, seedDefaultActivities } from '../sqlite/sqliteDatabase';
 import { migrationService } from '../sync/MigrationService';
 import { syncEngine } from '../sync/SyncEngine';
 
 interface AuthContextType {
   user: LocalDbUser | null;
   loading: boolean;
+  avatarUpdatedAt: number;
   login: (email: string, password: string) => Promise<void>;
   register: (nome: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
+  updateUserAvatar: (avatarUrl: string) => Promise<void>;
   apiUrl: string;
 }
 
@@ -21,6 +23,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<LocalDbUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [avatarUpdatedAt, setAvatarUpdatedAt] = useState<number>(Date.now());
 
   // Carregar usuário ativo ao inicializar o app
   useEffect(() => {
@@ -67,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         nome: data.user.nome,
         email: data.user.email,
         token: data.token,
+        avatar_url: data.user.avatar_url,
       };
 
       // Salvar no SQLite local
@@ -79,6 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...loggedUser,
         last_sync_timestamp: 0,
       });
+      setAvatarUpdatedAt(Date.now());
 
       // Disparar sincronização pós-login em background
       syncEngine.sync().catch(err => console.error('[AuthContext] Erro ao sincronizar pós-login:', err));
@@ -111,6 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         nome: data.user.nome,
         email: data.user.email,
         token: data.token,
+        avatar_url: data.user.avatar_url,
       };
 
       // Salvar no SQLite local
@@ -123,6 +129,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...registeredUser,
         last_sync_timestamp: 0,
       });
+      setAvatarUpdatedAt(Date.now());
 
       // Disparar sincronização pós-cadastro em background
       syncEngine.sync().catch(err => console.error('[AuthContext] Erro ao sincronizar pós-cadastro:', err));
@@ -152,7 +159,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       id: user.id,
       nome: user.nome,
       email: newEmail,
-      token: user.token
+      token: user.token,
+      avatar_url: user.avatar_url,
     };
     await saveLocalUser(updated);
     setUser({
@@ -161,8 +169,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const updateUserAvatar = async (avatarUrl: string) => {
+    if (!user) return;
+    const updated = {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      token: user.token,
+      avatar_url: avatarUrl,
+    };
+    await saveLocalUser(updated);
+    setUser({
+      ...user,
+      avatar_url: avatarUrl
+    });
+    setAvatarUpdatedAt(Date.now());
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUserEmail, apiUrl: API_URL }}>
+    <AuthContext.Provider value={{ user, loading, avatarUpdatedAt, login, register, logout, updateUserEmail, updateUserAvatar, apiUrl: API_URL }}>
       {children}
     </AuthContext.Provider>
   );

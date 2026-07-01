@@ -3,12 +3,21 @@ import {
   getPendingLocalFavorites, 
   getPendingLocalHighlights, 
   getPendingLocalChats,
+  getPendingLocalActivities,
+  getPendingLocalCompletions,
+  getPendingLocalExclusions,
   markFavoritesAsSynced, 
   markHighlightsAsSynced, 
   markChatsAsSynced,
+  markActivitiesAsSynced,
+  markCompletionsAsSynced,
+  markExclusionsAsSynced,
   applyRemoteFavorites, 
   applyRemoteHighlights, 
   applyRemoteChats,
+  applyRemoteActivities,
+  applyRemoteCompletions,
+  applyRemoteExclusions,
   updateLastSyncTimestamp 
 } from '../sqlite/sqliteDatabase';
 
@@ -55,9 +64,12 @@ export class SyncEngine {
       const pendingFavorites = await getPendingLocalFavorites(user.id);
       const pendingHighlights = await getPendingLocalHighlights(user.id);
       const pendingChats = await getPendingLocalChats(user.id);
+      const pendingActivities = await getPendingLocalActivities(user.id);
+      const pendingCompletions = await getPendingLocalCompletions(user.id);
+      const pendingExclusions = await getPendingLocalExclusions(user.id);
 
       console.log(
-        `[SyncEngine] Pendentes localmente: ${pendingFavorites.length} favoritos, ${pendingHighlights.length} grifos, ${pendingChats.length} chats.`
+        `[SyncEngine] Pendentes localmente: ${pendingFavorites.length} favoritos, ${pendingHighlights.length} grifos, ${pendingChats.length} chats, ${pendingActivities.length} atividades, ${pendingCompletions.length} conclusões, ${pendingExclusions.length} exclusões.`
       );
 
       // 2. Chamar endpoint de sincronização no backend
@@ -72,6 +84,9 @@ export class SyncEngine {
           favorites: pendingFavorites,
           highlights: pendingHighlights,
           chats: pendingChats,
+          activities: pendingActivities,
+          completions: pendingCompletions,
+          exclusions: pendingExclusions,
         }),
       });
 
@@ -91,24 +106,46 @@ export class SyncEngine {
       const remoteFavorites = data.changes.favorites || [];
       const remoteHighlights = data.changes.highlights || [];
       const remoteChats = data.changes.chats || [];
+      const remoteActivities = data.changes.activities || [];
+      const remoteCompletions = data.changes.completions || [];
+      const remoteExclusions = data.changes.exclusions || [];
 
       console.log(
-        `[SyncEngine] Mudanças recebidas do servidor: ${remoteFavorites.length} favoritos, ${remoteHighlights.length} grifos, ${remoteChats.length} chats.`
+        `[SyncEngine] Mudanças recebidas do servidor: ${remoteFavorites.length} favoritos, ${remoteHighlights.length} grifos, ${remoteChats.length} chats, ${remoteActivities.length} atividades, ${remoteCompletions.length} conclusões, ${remoteExclusions.length} exclusões.`
       );
 
       // 3. Aplicar mudanças remotas recebidas no SQLite local
       await applyRemoteFavorites(user.id, remoteFavorites);
       await applyRemoteHighlights(user.id, remoteHighlights);
       await applyRemoteChats(user.id, remoteChats);
+      await applyRemoteActivities(user.id, remoteActivities);
+      await applyRemoteCompletions(user.id, remoteCompletions);
+      await applyRemoteExclusions(user.id, remoteExclusions);
 
       // 4. Marcar as alterações locais que enviamos como sincronizadas (ou deletar se for soft delete)
       const syncedFavIds = pendingFavorites.map(f => f.id);
       const syncedHlIds = pendingHighlights.map(h => h.id);
       const syncedChatIds = pendingChats.map(c => c.id);
+      const syncedActivityIds = pendingActivities.map(a => a.id);
+      const syncedCompletionIds = pendingCompletions.map(co => co.id);
+      const syncedExclusionIds = pendingExclusions.map(ex => ex.id);
 
       await markFavoritesAsSynced(syncedFavIds);
       await markHighlightsAsSynced(syncedHlIds);
       await markChatsAsSynced(syncedChatIds);
+      await markActivitiesAsSynced(syncedActivityIds);
+      await markCompletionsAsSynced(syncedCompletionIds);
+      await markExclusionsAsSynced(syncedExclusionIds);
+
+      // Reagendar notificações se houver atividades sincronizadas remotamente
+      if (remoteActivities.length > 0) {
+        try {
+          const { NotificationService } = await import('../services/NotificationService');
+          await NotificationService.rescheduleAll(user.id);
+        } catch (e) {
+          console.error('[SyncEngine] Erro ao reagendar notificações pós-sync:', e);
+        }
+      }
 
       // 5. Atualizar o timestamp de último sync do usuário localmente
       await updateLastSyncTimestamp(user.id, serverTimestamp);

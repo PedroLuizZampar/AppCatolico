@@ -3,7 +3,8 @@ import { getColors } from '@/lib/theme/tokens';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, Image, Text } from 'react-native';
+import { useAuth } from '@/lib/context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
@@ -11,6 +12,21 @@ export default function TabLayout() {
   const colors = getColors(isDark);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user, apiUrl, avatarUpdatedAt } = useAuth();
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getAvatarUri = () => {
+    if (!user || !user.avatar_url) return null;
+    const baseUri = user.avatar_url.startsWith('http') ? user.avatar_url : `${apiUrl}${user.avatar_url}`;
+    return `${baseUri}?t=${avatarUpdatedAt}`;
+  };
 
   return (
     <Tabs
@@ -57,13 +73,35 @@ export default function TabLayout() {
                 opacity: pressed ? 0.7 : 1,
                 paddingHorizontal: 8,
                 marginRight: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
               })}
             >
-              <Ionicons
-                name="person-circle-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
+              {user?.avatar_url ? (
+                <Image
+                  source={{ uri: getAvatarUri() || undefined }}
+                  style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}
+                />
+              ) : user ? (
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: colors.primary,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>
+                    {getInitials(user.nome)}
+                  </Text>
+                </View>
+              ) : (
+                <Ionicons
+                  name="person-circle-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
+              )}
             </Pressable>
           </View>
         ),
@@ -75,7 +113,7 @@ export default function TabLayout() {
           title: 'Início',
           headerTitle: 'Sanctus',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <MaterialCommunityIcons name="church" size={size} color={color} />
           ),
         }}
       />
@@ -100,9 +138,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="plano"
+        options={{
+          title: 'Plano',
+          headerTitle: 'Plano de Vida',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="notebook-check" size={size} color={color} />
+          ),
+        }} 
+      />
+      <Tabs.Screen
         name="chat"
         options={{
-          title: 'Magisterium',
+          title: 'Chat',
           headerTitle: 'Magisterium AI',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="comment-question" size={size} color={color} />

@@ -12,6 +12,22 @@ import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ToastContainer } from '@/components/ToastContainer';
 import { View, ActivityIndicator } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
+if (Constants.appOwnership !== 'expo') {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      } as any),
+    });
+  } catch (error) {
+    console.warn('[Notifications] Erro ao configurar o handler de notificações:', error);
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -87,6 +103,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="plano/cadastro" options={{ title: 'Selecione a Atividade' }} />
         <Stack.Screen name="santo" options={{ title: 'Santo do Dia' }} />
         <Stack.Screen name="curiosidades" options={{ title: 'Curiosidades Católicas' }} />
         <Stack.Screen name="meditacao-evangelho" options={{ title: 'Meditação do Evangelho' }} />
