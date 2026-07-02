@@ -238,41 +238,63 @@ export function initializeDatabase(): Promise<void> {
     // 3. Executar inserção em transação para máxima performance
     await db.withTransactionAsync(async () => {
       // A. Migrar Livros (Caminho, Sulco, Forja, Catecismo, Frases de Santos, Via Sacra, Terço)
+      console.log('[SQLite] Preparando migração de Livros...');
+      const livrosParaInserir: any[] = [];
       for (const book of BOOKS) {
-        console.log(`[SQLite] Migrando livro: ${book.title}`);
         for (const chapter of book.data.chapters) {
           for (const paragraph of chapter.paragraphs) {
-            await db.runAsync(
-              `INSERT INTO livros (book_slug, chapter_num, chapter_name, paragraph_num, label, text)
-               VALUES (?, ?, ?, ?, ?, ?)`,
+            livrosParaInserir.push([
               book.slug,
               chapter.chapter,
               chapter.name,
               paragraph.number,
               paragraph.label || null,
               paragraph.text
-            );
+            ]);
           }
         }
       }
 
+      const batchSizeLivros = 100; // 100 * 6 = 600 parâmetros (limite SQLite Android é 999)
+      for (let i = 0; i < livrosParaInserir.length; i += batchSizeLivros) {
+        const batch = livrosParaInserir.slice(i, i + batchSizeLivros);
+        const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+        const flatParams = batch.reduce((acc: any[], val: any[]) => acc.concat(val), []);
+        await db.runAsync(
+          `INSERT INTO livros (book_slug, chapter_num, chapter_name, paragraph_num, label, text)
+           VALUES ${placeholders}`,
+          flatParams
+        );
+      }
+
       // B. Migrar Bíblia Sagrada (AT e NT)
-      console.log('[SQLite] Migrando Bíblia Sagrada...');
+      console.log('[SQLite] Preparando migração de Bíblia Sagrada...');
+      const versiculosParaInserir: any[] = [];
       for (const livro of todosLivros) {
         for (const capitulo of livro.capitulos) {
           for (const versiculo of capitulo.versiculos) {
-            await db.runAsync(
-              `INSERT INTO biblia (testamento, livro_nome, livro_slug, capitulo, versiculo, texto)
-               VALUES (?, ?, ?, ?, ?, ?)`,
+            versiculosParaInserir.push([
               livro.testamento,
               livro.nome,
               livro.slug,
               capitulo.capitulo,
               versiculo.versiculo,
               versiculo.texto
-            );
+            ]);
           }
         }
+      }
+
+      const batchSizeBiblia = 100; // 100 * 6 = 600 parâmetros (limite SQLite Android é 999)
+      for (let i = 0; i < versiculosParaInserir.length; i += batchSizeBiblia) {
+        const batch = versiculosParaInserir.slice(i, i + batchSizeBiblia);
+        const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+        const flatParams = batch.reduce((acc: any[], val: any[]) => acc.concat(val), []);
+        await db.runAsync(
+          `INSERT INTO biblia (testamento, livro_nome, livro_slug, capitulo, versiculo, texto)
+           VALUES ${placeholders}`,
+          flatParams
+        );
       }
 
       // C. Migrar Orações do Terço
